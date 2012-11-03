@@ -16,12 +16,16 @@ Introduction
 The user story
 --------------
 Right now I'm writing a C++ web app. I try to deploy it to my ubuntu server. Unfortunately, it's not as simple as copying sources and compiling...
-- my ubuntu have packages for the libs, but of course they are outdated, so I need to download the sources and recompile last version...
-- I also need the cmake tool. Of course, the default version is too old. So I need to download and recompile it...
-- and so on.
+
+While developping, I have installed a lot of components that now need to be installed on the server as well :
+- Libs. my ubuntu have packages for the libs, but of course they are outdated, so I need to download the sources and recompile last version...
+- Uh oh no ! Not the last version but the same exact version my app is currently using.
+- I also need the cmake tool. Of course, the default apt version is too old. So I need to download and recompile it...
+- ...and so on for a lot of libs and tools...
 - Oh, and I'm also planning to use latest gcc 4.7 to play with C++ 2011
-- One more thing : I want to try the GNU standard lib debug mode which require recompilation of just every lib with it.
-You got it. It's not only tiring to do it again and again for each server install, it's just *impossible* at some level.
+- Oh, one more thing : I want to try the GNU standard lib debug mode which require recompilation of just every lib with it.
+
+You got it. It's not only tiring to install evrything again and again for each server install, it's just *impossible* at some level.
 
 So I thought to automatize it.
 
