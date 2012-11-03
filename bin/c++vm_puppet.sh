@@ -1,8 +1,8 @@
 #! /bin/bash
 
 ## C++ Version Manager
-## by Offirmo
-## Inspired from RVM : https://rvm.io//
+## by Offirmo, https://github.com/Offirmo/cvm
+
 
 echo ""
 

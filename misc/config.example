@@ -1,0 +1,14 @@
+#! /bin/bash
+
+## C++ VM config file
+## This fil will be sourced at the beginning of each C++VM invocation.
+## Use it to redefine some C++ VM important variables.
+
+echo "Hello from config.example"
+
+## option : redirect to another file
+#source /srv/dev/misc/cvm/misc/config_example
+
+## Default working dir is in  ~/.c++vm
+## We can redefine it (only the config file will stay in .c++vm)
+CVM_DATA_DIR=/srv/dev/misc/c++vm_data

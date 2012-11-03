@@ -5,7 +5,9 @@ C/C++ Version Manager is a tool for managing your C/C++ app with the exact compo
 
 Each component is automatically installed with specific version and mode (debug/release).
 
-Inspired from the great RVM (Ruby Version Manager)
+C++VM is available at : https://github.com/Offirmo/cvm
+
+Inspired from the great RVM (Ruby Version Manager) https://rvm.io//
 
 
 Introduction 

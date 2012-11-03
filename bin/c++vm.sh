@@ -1,12 +1,17 @@
 #! /bin/bash
 
 ## C++ Version Manager
-## by Offirmo
-## Inspired from RVM : https://rvm.io//
+## by Offirmo, https://github.com/Offirmo/cvm
+
 
 ## We use the OSL shell lib
 source osl_lib_init.sh
+source osl_lib_debug.sh
 
+## Now load our config
+source c++vm_inc_env.sh
+
+## And load our primitives
 source c++vm_lib_commands.sh
 
 
@@ -22,6 +27,8 @@ usage()
 	echo "  help"
 	echo "  status"
 	echo "  list"
+	echo "  new"
+	echo "  update"
 	echo "..."
 	exit 1
 }
@@ -50,6 +57,18 @@ ensure_param2()
 	fi
 }
 
+ensure_param2_as_compset()
+{
+	ensure_param2
+	
+	local raw_compset_name=$PARAM2
+	
+	## clean the given name
+	local compset_name=`echo $raw_compset_name | awk '{print tolower($0)}'`
+	
+	## put it back into the param var
+	PARAM_COMPSET=$compset_name
+}
 
 ## processing
 exec_cmd_status()
@@ -62,16 +81,33 @@ exec_cmd_list()
 }
 exec_cmd_create_new_compset()
 {
-	ensure_param2
-	CVM_COMPSET_create_compset $PARAM2
+	ensure_param2_as_compset
+	echo "* creating compset $PARAM_COMPSET..."
+	CVM_COMPSET_create_compset_if_needed $PARAM_COMPSET
+}
+exec_cmd_use_existing_compset()
+{
+	ensure_param2_as_compset
+	echo "* making compset $PARAM_COMPSET default..."
+	CVM_COMPSET_save_current_active_compset $PARAM_COMPSET
+}
+exec_cmd_update_existing_compset()
+{
+	ensure_param2_as_compset
+	echo "* updating compset $PARAM_COMPSET..."
+	CVM_COMPSET_update_compset $PARAM_COMPSET
 }
 
 
 ## starts execution
+
+CVM_COMPSET_ensure_default_compset
+
 CVM_debug "starting execution of command : \"$CMD\"..."
 case $CMD in
 "")
-	echo "XXX You must give a command..."
+	echo "Welcome to C++ Version Manager !"
+	echo "Please give a command, cf. help below :"
 	usage # REM : will exit
 	;;
 ### display help and exit
@@ -89,6 +125,14 @@ case $CMD in
 ### create a new component set
 "new")
 	exec_cmd_create_new_compset
+	;;
+### use a specific component set
+"use")
+	exec_cmd_use_existing_compset
+	;;
+### use a specific component set
+"update")
+	exec_cmd_update_existing_compset
 	;;
 ### ??? command not recognized
 *)

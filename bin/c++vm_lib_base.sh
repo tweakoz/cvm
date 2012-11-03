@@ -1,7 +1,7 @@
 #! /bin/bash
 
 ## C++ Version Manager
-## by Offirmo
+## by Offirmo, https://github.com/Offirmo/cvm
 ##
 ## This file defines :
 ##   basic utilities methods used in c++vm scripts
