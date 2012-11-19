@@ -7,11 +7,21 @@
 ## We use the OSL shell lib
 source osl_lib_init.sh
 source osl_lib_debug.sh
+source osl_lib_output.sh
+source osl_lib_string.sh
+source osl_lib_rsrc.sh
+source osl_lib_version.sh
 
 ## Now load our config
 source c++vm_inc_env.sh
 
 ## And load our primitives
+source c++vm_lib_base.sh
+source c++vm_lib_compset.sh
+source c++vm_lib_compfile.sh
+source c++vm_lib_component.sh
+source c++vm_lib_comp_selection.sh
+source c++vm_lib_comp_installation.sh
 source c++vm_lib_commands.sh
 
 
@@ -28,7 +38,9 @@ usage()
 	echo "  status"
 	echo "  list"
 	echo "  new"
+	echo "  use"
 	echo "  update"
+	echo "  install [compfile]"
 	echo "..."
 	exit 1
 }
@@ -36,16 +48,17 @@ usage()
 
 ## read params
 RAW_CMD=$1
-
-
-## init defaults
-CVM_verbose=true
-
-
-## process params
-CMD=`echo $RAW_CMD | awk '{print tolower($0)}'`
 PARAM2=$2
 PARAM3=$3
+
+## init and defaults
+CVM_verbose=true  ## dev actively in progress
+CVM_COMPSET_ensure_default_compset
+
+## process params and env
+CMD=$(OSL_STRING_to_lower $RAW_CMD)
+CURRENT_COMPSET=$(CVM_COMPSET_get_current_active_compset)
+
 
 ensure_param2()
 {
@@ -70,6 +83,7 @@ ensure_param2_as_compset()
 	PARAM_COMPSET=$compset_name
 }
 
+
 ## processing
 exec_cmd_status()
 {
@@ -77,31 +91,43 @@ exec_cmd_status()
 }
 exec_cmd_list()
 {
-	echo "TODO..."
+	CVM_COMMANDS_list_compsets
 }
 exec_cmd_create_new_compset()
 {
 	ensure_param2_as_compset
-	echo "* creating compset $PARAM_COMPSET..."
+	echo "* creating component set \"$PARAM_COMPSET\"..."
 	CVM_COMPSET_create_compset_if_needed $PARAM_COMPSET
 }
 exec_cmd_use_existing_compset()
 {
 	ensure_param2_as_compset
-	echo "* making compset $PARAM_COMPSET default..."
+	echo "* making component set \"$PARAM_COMPSET\" default..."
 	CVM_COMPSET_save_current_active_compset $PARAM_COMPSET
 }
-exec_cmd_update_existing_compset()
+exec_cmd_update_current_compset()
 {
-	ensure_param2_as_compset
-	echo "* updating compset $PARAM_COMPSET..."
-	CVM_COMPSET_update_compset $PARAM_COMPSET
+	echo "* updating component set \"$CURRENT_COMPSET\"..."
+	CVM_COMPFILE_update_compset $CURRENT_COMPSET
 }
+exec_cmd_upgrade_current_compset()
+{
+	echo "* upgrading component set \"$CURRENT_COMPSET\"..."
+	CVM_COMP_INSTALL_upgrade_compset $CURRENT_COMPSET
+}
+exec_cmd_process_compfile_to_current_compset()
+{
+	## todo check params
+	local compfile_path=$CVM_DEFAULT_COMPFILE_NAME
+	echo "* Setting component file \"$compfile_path\" to component set \"$CURRENT_COMPSET\"..."
+	CVM_COMPFILE_set  $compfile_path  $CURRENT_COMPSET
+	
+	exec_cmd_update_current_compset
+}
+
 
 
 ## starts execution
-
-CVM_COMPSET_ensure_default_compset
 
 CVM_debug "starting execution of command : \"$CMD\"..."
 case $CMD in
@@ -130,9 +156,17 @@ case $CMD in
 "use")
 	exec_cmd_use_existing_compset
 	;;
-### use a specific component set
+### update=reparse current component set
 "update")
-	exec_cmd_update_existing_compset
+	exec_cmd_update_current_compset
+	;;
+### upgrade=install current component set
+"upgrade")
+	exec_cmd_upgrade_current_compset
+	;;
+### install a new component set
+"set_compfile")
+	exec_cmd_process_compfile_to_current_compset
 	;;
 ### ??? command not recognized
 *)

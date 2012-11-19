@@ -9,13 +9,15 @@
 ## This file is not meant to be executed, only sourced :
 ##   source c++vm_lib_base.sh
 
-source c++vm_inc_env.sh
-
-source osl_lib_debug.sh
-source osl_lib_output.sh
+## REM : required includes are in main file
 
 
 CVM_debug()
 {
-	$CVM_verbose && OSL_debug $*
+	$CVM_verbose && OSL_debug "$*"
+}
+
+CVM_debug_multi()
+{
+	$CVM_verbose && OSL_debug_multi "$*"
 }

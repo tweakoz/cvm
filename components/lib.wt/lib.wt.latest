@@ -1,0 +1,4 @@
+require lib.boost
+require tool.cmake, version : 2.6+
+
+stub

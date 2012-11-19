@@ -13,6 +13,14 @@ CVM_VERSION="0.1.0"
 CVM_STAMP="2012/11/03"
 
 
+## Various constants
+CVM_DEFAULT_COMPFILE_NAME="compfile"
+CVM_COMP_SELECTION_DIR_NAME="components_selection"
+CVM_INSTALL_DIR="$OSL_INIT_script_full_dir/.."
+CVM_COMP_INSTALL_FINAL_DIR_NAME="result"
+CVM_ROOT_COMPONENT_NAME="app"
+
+
 ## a dir where we'll put our stuff
 CVM_DATA_DIR=$HOME/.c++vm
 OSL_INIT_ensure_dir $CVM_DATA_DIR
@@ -26,9 +34,11 @@ if [[ -f "$CVM_CONFIG_PATH" ]]; then
 else
 	## crate the file from a model if possible
 	touch "$CVM_CONFIG_PATH"
-	if [[ -f "$OSL_INIT_script_full_dir/../config.example" ]]; then
+	config_template="$CVM_INSTALL_DIR/misc/config.example"
+	#echo "testing $config_template..."
+	if [[ -f "$config_template" ]]; then
 		## example file is available
-		cp "$OSL_INIT_script_full_dir/../config.example" "$CVM_CONFIG_PATH"
+		cp "$config_template" "$CVM_CONFIG_PATH"
 	else
 		## build a minimal config file
 		echo "#! /bin/bash " >> "$CVM_CONFIG_PATH"
@@ -38,9 +48,12 @@ else
 fi
 
 ## now load the config
-#OSL_debug "sourcing $CVM_CONFIG_PATH..."
-source "$CVM_CONFIG_PATH"
-
+## include guard : really useful ?
+if [[ -z "$CVM_CONFIG_SOURCED" ]]; then
+	OSL_debug "sourcing $CVM_CONFIG_PATH..."
+	source "$CVM_CONFIG_PATH"
+	CVM_CONFIG_SOURCED=true
+fi
 
 ## a dir where we'll cache stuff.
 ## Stuff in this dir can be redownloaded / regenerated
@@ -55,7 +68,7 @@ OSL_INIT_ensure_dir $CVM_CACHE_DIR
 CVM_SHARED_CACHE_DIR=$CVM_CACHE_DIR/shared
 OSL_INIT_ensure_dir $CVM_SHARED_CACHE_DIR
 
-## a dir for components definitions
+## a dir for downloaded components definitions
 CVM_COMP_DEFS_DIR=$CVM_SHARED_CACHE_DIR/components
 OSL_INIT_ensure_dir $CVM_COMP_DEFS_DIR
 
@@ -68,6 +81,9 @@ OSL_INIT_ensure_dir $CVM_ARCHIVES_DIR
 CVM_SRC_DIR=$CVM_SHARED_CACHE_DIR/src
 OSL_INIT_ensure_dir $CVM_SRC_DIR
 
+
+## the dir for integrated components definitions
+CVM_INTEGRATED_COMP_DEFS_DIR=$CVM_INSTALL_DIR/components
 
 
 ## a dir for component sets

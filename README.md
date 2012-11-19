@@ -1,6 +1,8 @@
 C/C++ Version Manager
 =====================
 
+XXX this project is under active development and is not yet usable XXX
+
 C/C++ Version Manager is a tool for managing your C/C++ app with the exact components you need : compiler, libs and misc tools.
 
 Each component is automatically installed with specific version and mode (debug/release).
@@ -25,7 +27,7 @@ While developping, I have installed a lot of components that now need to be inst
 - Oh, and I'm also planning to use latest gcc 4.7 to play with C++ 2011
 - Oh, one more thing : I want to try the GNU standard lib debug mode which require recompilation of just every lib with it.
 
-You got it. It's not only tiring to install evrything again and again for each server install, it's just *impossible* at some level.
+You got it. It's not only tiring to install everything again and again for each server install, it's just *impossible* at some level.
 
 So I thought to automatize it.
 

@@ -9,27 +9,26 @@
 ## This file is not meant to be executed, only sourced :
 ##   source c++vm_lib_compset.sh
 
-source osl_lib_rsrc.sh
-
-source c++vm_lib_base.sh
+## REM : required includes are in main file
 
 
-CVM_COMPSET_create_compset_if_needed()
+## constants
+CVM_COMPSET_DEFAULT_COMPSET_NAME="default"
+
+
+CVM_COMPSET_get_compset_dir()
 {
 	local compset_name=$1
-	
-	CVM_debug "creating compset \"$compset_name\" if needed..."
-	
-	## check if such a compset already exists
-	CVM_COMPSET_check_compset $compset_name
-	local compset_exists_and_is_ok=$?
-	if [[ $compset_exists_and_is_ok -eq 0 ]]; then
-		## compset already exists !
-		echo "Component set \"$compset_name\" already exists. Nothing done."
-	else
-		## create it
-		CVM_COMPSET_create_compset $compset_name
-	fi
+	local COMPSET_DIR="$CVM_COMPSETS_DIR/$compset_name"
+	echo "$COMPSET_DIR"
+}
+
+CVM_COMPSET_get_compset_compfile()
+{
+	local compset_name=$1
+	local COMPSET_DIR=$(CVM_COMPSET_get_compset_dir $compset_name)
+	local COMPSET_FILE="$COMPSET_DIR/$CVM_DEFAULT_COMPFILE_NAME"
+	echo "$COMPSET_FILE"
 }
 
 
@@ -49,6 +48,50 @@ CVM_COMPSET_check_compset()
 }
 
 
+## try to create the compset
+## and *complains* if it already exists
+## (useful for user-created compsets)
+CVM_COMPSET_create_compset_if_needed()
+{
+	local compset_name=$1
+	
+	CVM_debug "creating compset \"$compset_name\" if needed..."
+	
+	## check if such a compset already exists
+	CVM_COMPSET_check_compset $compset_name
+	local compset_exists_and_is_ok=$?
+	if [[ $compset_exists_and_is_ok -eq 0 ]]; then
+		## compset already exists !
+		echo "Component set \"$compset_name\" already exists. Nothing done."
+	else
+		## create it
+		CVM_COMPSET_create_compset $compset_name
+	fi
+}
+
+
+## try to create the compset
+## but does nothing if it already exists
+## (useful for automatically created compsets)
+CVM_COMPSET_ensure_compset()
+{
+	local compset_name=$1
+
+	CVM_debug "Ensuring compset \"$compset_name\"..."
+	
+	## check if such a compset already exists
+	CVM_COMPSET_check_compset $compset_name
+	local compset_exists_and_is_ok=$?
+	if [[ $compset_exists_and_is_ok -eq 0 ]]; then
+		## compset already exists
+		do_nothing=1
+	else
+		## create it
+		CVM_COMPSET_create_compset $compset_name
+	fi
+}
+
+
 CVM_COMPSET_create_compset()
 {
 	local compset_name=$1
@@ -64,11 +107,11 @@ CVM_COMPSET_create_compset()
 		echo "couldn't get write lock..."
 	else
 		## a dir for the component set
-		COMPSET_DIR="$CVM_COMPSETS_DIR/$compset_name"
+		local COMPSET_DIR=$(CVM_COMPSET_get_compset_dir $compset_name)
 		mkdir -p "$COMPSET_DIR"
 		
 		## a description file
-		COMPSET_FILE="$COMPSET_DIR/compfile"
+		local COMPSET_FILE=$(CVM_COMPSET_get_compset_compfile $compset_name)
 		## create the file from a model if possible
 		touch "$COMPSET_FILE"
 		if [[ -f "$OSL_INIT_script_full_dir/../compfile.example" ]]; then
@@ -98,34 +141,6 @@ CVM_COMPSET_create_compset()
 }
 
 
-CVM_COMPSET_ensure_compset()
-{
-	local compset_name=$1
-
-	CVM_debug "Ensuring compset \"$compset_name\"..."
-	
-	## check if such a compset already exists
-	CVM_COMPSET_check_compset $compset_name
-	local compset_exists_and_is_ok=$?
-	if [[ $compset_exists_and_is_ok -eq 0 ]]; then
-		## compset already exists
-		do_nothing=1
-	else
-		## create it
-		CVM_COMPSET_create_compset $compset_name
-	fi
-}
-
-
-CVM_COMPSET_delete_compset()
-{
-	local compset_name=$1
-	
-	CVM_debug "creating compset \"$compset_name\"..."
-	OSL_OUTPUT_abort_execution_because_not_implemented
-}
-
-
 CVM_COMPSET_save_current_active_compset()
 {
 	local compset_name=$1
@@ -145,9 +160,24 @@ CVM_COMPSET_save_current_active_compset()
 }
 
 
+CVM_COMPSET_get_current_active_compset()
+{
+	cat "$CVM_ACTIVE_COMPSET"
+}
+
+
+CVM_COMPSET_delete_compset()
+{
+	local compset_name=$1
+	
+	CVM_debug "creating compset \"$compset_name\"..."
+	OSL_OUTPUT_abort_execution_because_not_implemented
+}
+
+
 CVM_COMPSET_ensure_default_compset()
 {
-	local compset_name="default"
+	local compset_name=$CVM_COMPSET_DEFAULT_COMPSET_NAME
 	CVM_COMPSET_ensure_compset $compset_name
 	local compset_exists_and_is_ok=$?
 	if [[ $compset_exists_and_is_ok -eq 0 ]]; then
@@ -160,27 +190,6 @@ CVM_COMPSET_ensure_default_compset()
 	else
 		## doesn't exist !
 		echo "XXX Default component set \"$compset_name\" counldn't be created !"
-	fi
-}
-
-
-
-
-CVM_COMPSET_update_compset()
-{
-	local compset_name=$1
-	
-	CVM_debug "Updating compset \"$compset_name\"..."
-	
-	## check if such a compset already exists
-	CVM_COMPSET_check_compset $compset_name
-	local compset_exists_and_is_ok=$?
-	if [[ $compset_exists_and_is_ok -eq 0 ]]; then
-		## compset exists and is fine
-		OSL_OUTPUT_abort_execution_because_not_implemented
-	else
-		## doesn't exist !
-		echo "XXX component set \"$compset_name\" doesn't exist !"
 	fi
 }
 
