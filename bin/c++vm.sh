@@ -11,6 +11,9 @@ source osl_lib_output.sh
 source osl_lib_string.sh
 source osl_lib_rsrc.sh
 source osl_lib_version.sh
+source osl_lib_exit.sh
+source osl_lib_capabilities.sh
+source osl_lib_archive.sh
 
 ## Now load our config
 source c++vm_inc_env.sh
@@ -37,10 +40,10 @@ usage()
 	echo "  help"
 	echo "  status"
 	echo "  list"
-	echo "  new"
-	echo "  use"
+	echo "  new <name>"
+	echo "  use [name]"
 	echo "  update"
-	echo "  install [compfile]"
+	echo "  set_compfile [compfile]"
 	echo "..."
 	exit 1
 }

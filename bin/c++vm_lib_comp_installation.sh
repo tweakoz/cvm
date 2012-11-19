@@ -33,8 +33,12 @@ CVM_COMP_INSTALL_upgrade_compset()
 	## We will now rebuild the component selection
 	## This is a complex shared rsrc
 	OSL_RSRC_begin_managed_write_operation . $CVM_COMP_INSTALL_FINAL_DIR_NAME
-	rm -rf $CVM_COMP_INSTALL_FINAL_DIR_NAME
+
+	## XXX make more subtile
+	#rm -rf $CVM_COMP_INSTALL_FINAL_DIR_NAME
+	
 	mkdir $CVM_COMP_INSTALL_FINAL_DIR_NAME
+	mkdir $CVM_COMP_INSTALL_FINAL_DIR_NAME/include
 	mkdir $CVM_COMP_INSTALL_FINAL_DIR_NAME/build
 	mkdir $CVM_COMP_INSTALL_FINAL_DIR_NAME/bin
 	mkdir $CVM_COMP_INSTALL_FINAL_DIR_NAME/lib
@@ -235,7 +239,7 @@ CVM_COMP_INSTALL_ensure_component_installed()
 	CVM_COMP_INSTALL_load_component_data  $component_id  $CVM_COMP_INSTALL_last_seen_selected_version
 	return_code=$?
 	
-	CVM_COMP_INSTALL_install_loaded_component  $component_id  $CVM_COMP_INSTALL_last_seen_selected_version
+	CVM_COMP_INSTALL_ensure_loaded_component_is_installed  $component_id  $CVM_COMP_INSTALL_last_seen_selected_version
 	return_code=$?
 	
 	if [[ $return_code -ne 0 ]]; then
@@ -339,27 +343,563 @@ CVM_COMP_INSTALL_parse_line_load_compfile_data()
 }
 
 
-CVM_COMP_INSTALL_install_loaded_component()
+CVM_COMP_INSTALL_get_value_from_cached_component_for()
+{
+	local key=$1
+	local return_code=1 # error/not exist by default
+	return_value=""
+	
+	CVM_debug "looking for value of key \"$key\" in current component data..."
+
+# to split lines along \n, we must change the IFS
+	IFS='
+' # this makes IFS a newline
+	for raw_line in $CVM_COMP_INSTALL_current_component_data; do
+		local line=$(OSL_STRING_trim "$raw_line")
+		#echo "$line"
+		IFS=" "
+		## REM : -a = array, splitted along IFS
+		typeset -a line_space_splitted=( $line )
+		#CVM_debug "- : ${line_space_splitted}"
+		#CVM_debug "0 : ${line_space_splitted[0]}"
+		#CVM_debug "1 : ${line_space_splitted[1]}"
+		#CVM_debug "2 : ${line_space_splitted[2]}"
+		IFS='
+' # this makes IFS a newline again
+
+		local line_key=${line_space_splitted[0]}
+		if [[ "$line_key" == "$key" ]]; then
+			## found
+			return_value=$(OSL_STRING_trim "${line#$key}")
+			return_code=0
+			CVM_debug " -> found, $key=\"$return_value\""
+			break
+		fi
+	done
+	OSL_INIT_restore_default_IFS
+	
+	if [[ $return_code -ne 0 ]]; then
+		## not found
+		CVM_debug " -> not found."
+	fi
+	
+	return $return_code
+}
+
+
+CVM_COMP_INSTALL_ensure_loaded_component_is_installed()
 {
 	local component_id=$1
 	local component_version=$2
 	local return_code=1 # error/not exist by default
 	
-	echo "installing component \"$component_id\" with version \"$component_version\"..."
+	echo "* ensuring that component \"$component_id\" is installed with version \"${component_version#$component_id.}\"..."
 
-	## TODO
-	CVM_debug_multi $CVM_COMP_INSTALL_current_component_data
+	#CVM_debug_multi $CVM_COMP_INSTALL_current_component_data
 	
 	## first check install mode
 	CVM_COMP_INSTALL_get_value_from_cached_component_for "install_mode"
-	## let's pretend it worked
-	return_code=0
+	return_code=1 # error/not exist by default
+	case $return_value in
+	### do nothing
+	"do_nothing")
+		## well...
+		return_code=0 ## OK
+		;;
+	### install via apt
+	"apt")
+		CVM_COMP_INSTALL_ensure_loaded_component_is_installed_via_apt "$component_id" "$component_version"
+		return_code=$?
+		;;
+	### build it !
+	"build")
+		CVM_COMP_INSTALL_ensure_loaded_component_is_built_and_installed "$component_id" "$component_version"
+		return_code=$?
+		;;
+	### no info
+	"")
+		OSL_EXIT_abort_execution_with_message "Can't find how to install given package..."
+		## return_code stays NOK
+		;;
+	### any other command
+	*)
+		OSL_EXIT_abort_execution_with_message "Unknown install method : \"$return_value\""
+		## return_code stays NOK
+		;;
+	esac
 
+	return $return_code
+}
+
+
+CVM_COMP_INSTALL_ensure_loaded_component_is_installed_via_apt()
+{
+	local return_code=1 # error/not exist by default
+
+	OSL_OUTPUT_warn_not_implemented "CVM_COMP_INSTALL_ensure_loaded_component_is_installed_via_apt"
 	
 	return $return_code
 }
 
-CVM_COMP_INSTALL_get_value_from_cached_component_for()
+
+CVM_COMP_INSTALL_ensure_loaded_component_is_built_and_installed()
 {
+	local component_id=$1
+	local component_version=$2
+	local return_code=1 # error/not exist by default
 	
+	CVM_debug "* ensuring that component \"$component_version\" is built and installed..."
+
+	## chek rsrc
+	local rsrc_id=$component_version.$CVM_COMP_INSTALL_RSRC_ID_PART
+	OSL_RSRC_check "$CVM_COMP_INSTALL_FINAL_DIR_NAME" $rsrc_id
+	if [[ $? -eq 0 ]]; then
+		## rsrc is already OK' nothing to do
+		CVM_debug "  -> this rsrc is already available."
+		return 0
+	fi
+
+	## first ensure that component is built
+	CVM_COMP_INSTALL_ensure_loaded_component_is_built "$component_id" "$component_version"
+	return_code=$?
+	if [[ $return_code -ne 0 ]]; then
+		return 1
+	fi
+	
+	## now we can install
+	
+	OSL_RSRC_begin_managed_write_operation "$CVM_COMP_INSTALL_FINAL_DIR_NAME" "$rsrc_id"
+
+	## first check install mode
+	local install_mode="error"
+	CVM_COMP_INSTALL_get_value_from_cached_component_for "post_build_install_mode"
+	return_code=$?
+	if [[ $return_code -eq 0 ]]; then
+		## explicitely given : we obey
+		install_mode=$return_value
+	else
+		## try to infer it ourselves
+		CVM_COMP_INSTALL_get_value_from_cached_component_for "build_mode"
+		return_code=$?
+		case $return_value in
+		"cmake")
+			install_mode="make_install"
+			;;
+		"make")
+			install_mode="auto"
+			;;
+		### anything else
+		*)
+			## ??? don't know !
+			OSL_OUTPUT_display_error_message "Can't guess how to install (after build) given component..."
+			;;
+		esac
+	fi
+	CVM_debug "* component \"$component_version\" install (after build) mode : $install_mode"
+
+	return_code=1 # error
+	case $install_mode in
+	"make_install")
+		## let's do it
+		local prev_wd=$(pwd)
+		local build_dir="$(CVM_COMPONENT_get_component_build_dir $component_version)"
+		cd "$build_dir"
+		make install
+		return_code=$?
+		## back to prev dir
+		cd "$prev_wd"
+		;;
+	"auto")
+		## this one is clever
+		## we will copy all .h and .a/.so in their expected dir
+		local build_dir="$(CVM_COMPONENT_get_component_build_dir $component_version)"
+		
+		local include_dir="$(CVM_COMPONENT_get_component_include_dir $component_version)"
+		mkdir -p "$include_dir"
+		for file in `find -P "$build_dir" \( -name "*.h" -o -name "*.hxx" -o -name "*.hpp" -o -name "*.H" \) -type f`; do
+			echo "$file"
+			cp "$file" "$include_dir"
+		done
+		
+		local lib_dir="$(CVM_COMPONENT_get_component_lib_dir $component_version)"
+		mkdir -p "$lib_dir"
+		for file in `find -P "$build_dir" \( -name "*.a" -o -name "*.so" \) -type f`; do
+			echo "$file"
+			cp "$file" "$lib_dir"
+		done
+		
+		local bin_dir="$(CVM_COMPONENT_get_component_include_dir $component_version)"
+		mkdir -p "$bin_dir"
+
+		## I'm lazy...
+		return_code=0
+		;;
+	### anything else
+	*)
+		OSL_OUTPUT_display_error_message "Unknown install (after build) method : \"$install_mode\""
+		## return_code stays NOK
+		;;
+	esac
+
+	if [[ $return_code -ne 0 ]]; then
+		OSL_RSRC_end_managed_write_operation_with_error "$CVM_COMP_INSTALL_FINAL_DIR_NAME" $rsrc_id
+	else
+		OSL_RSRC_end_managed_write_operation "$CVM_COMP_INSTALL_FINAL_DIR_NAME" $rsrc_id
+		if [[ $? -ne 0 ]]; then
+			OSL_OUTPUT_display_error_message "Concurrent access to \"$component_version\" !"
+			return_code=1 # error
+		fi
+	fi
+
+	if [[ $? -ne 0 ]]; then
+		OSL_OUTPUT_display_error_message "error while installing (after build) component \"$component_version\"..."
+	fi
+	
+	return $return_code
 }
+
+
+CVM_COMP_INSTALL_ensure_loaded_component_is_built()
+{
+	local component_id=$1
+	local component_version=$2
+	local return_code=1 # error/not exist by default
+	
+	CVM_debug "* ensuring that component \"$component_version\" is built..."
+
+	## chek rsrc
+	local rsrc_id=$component_version.$CVM_COMP_BUILD_RSRC_ID_PART
+	local rsrc_dir="$CVM_COMP_INSTALL_FINAL_DIR_NAME/build"
+	OSL_RSRC_check "$rsrc_dir" "$rsrc_id"
+	if [[ $? -eq 0 ]]; then
+		## rsrc is already OK' nothing to do
+		CVM_debug "  -> this rsrc is already available."
+		return 0
+	fi
+
+	## first we need the src
+	CVM_COMP_INSTALL_ensure_loaded_component_src_are_available "$component_id" "$component_version"
+	return_code=$?
+	if [[ $return_code -ne 0 ]]; then
+		return 1
+	fi
+	
+	## now we can build
+	OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id"
+
+	CVM_COMP_INSTALL_get_value_from_cached_component_for "build_mode"
+	return_code=1 # error/not exist by default
+	case $return_value in
+	### basic make
+	"make")
+		## let's do it
+		local prev_wd=$(pwd)
+		local build_dir="$(CVM_COMPONENT_get_component_build_dir $component_version)"
+		cd "$build_dir"
+		make
+		return_code=$?
+		## back to prev dir
+		cd "$prev_wd"
+		;;
+	### no info
+	"")
+		OSL_OUTPUT_display_error_message "Can't find how to build given component..."
+		## return_code stays NOK
+		;;
+	### anything else
+	*)
+		OSL_OUTPUT_display_error_message "Unknown build method : \"$return_value\""
+		## return_code stays NOK
+		;;
+	esac
+
+	if [[ $return_code -ne 0 ]]; then
+		OSL_RSRC_end_managed_write_operation_with_error "$rsrc_dir" "$rsrc_id"
+	else
+		OSL_RSRC_end_managed_write_operation "$rsrc_dir" "$rsrc_id"
+		if [[ $? -ne 0 ]]; then
+			OSL_OUTPUT_display_error_message "Concurrent access to \"$component_version\" !"
+			return_code=1 # error
+		fi
+	fi
+
+	if [[ $? -ne 0 ]]; then
+		OSL_OUTPUT_display_error_message "error while building component \"$component_version\"..."
+	fi
+	
+	return $return_code
+}
+
+
+CVM_COMP_INSTALL_ensure_loaded_component_src_are_available()
+{
+	local component_id=$1
+	local component_version=$2
+	local return_code=1 # error/not exist by default
+	
+	CVM_debug "* ensuring that component \"$component_version\" src are available..."
+
+	## chek rsrc
+	local rsrc_id=$component_version.$CVM_COMP_SRC_RSRC_ID_PART
+	local rsrc_dir="$CVM_COMP_INSTALL_FINAL_DIR_NAME/build"
+	OSL_RSRC_check "$rsrc_dir" "$rsrc_id"
+	if [[ $? -eq 0 ]]; then
+		## rsrc is already OK' nothing to do
+		CVM_debug "  -> this rsrc is already available."
+		return 0
+	fi
+
+	## in any case, we need shared src
+	CVM_COMP_INSTALL_ensure_loaded_component_shared_src_are_available "$component_id" "$component_version"
+	return_code=$?
+	if [[ $return_code -ne 0 ]]; then
+		return 1
+	fi
+
+	OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id"
+
+	## do we have "in source build" or "out of source build" ?
+	CVM_COMP_INSTALL_compute_loaded_component_build_src_dir "$component_id" "$component_version"
+	return_code=$?
+	if [[ $return_code -ne 0 ]]; then
+		return 1
+	fi
+	local build_src_dir=$return_value
+	local oos_src_dir="$(CVM_COMPONENT_get_component_shared_src_dir $component_version)"
+	if [[ "$build_src_dir" == "$oos_src_dir" ]]; then
+		## OOS build
+		## do nothing
+		return_code=0
+	else
+		## IS build
+		## we make a full copy of the source
+		cp -r "$oos_src_dir" "$build_src_dir"
+		return_code=$?
+	fi
+
+	if [[ $? -ne 0 ]]; then
+		OSL_OUTPUT_display_error_message "error while making component \"$component_version\" src are available !"
+	fi
+	
+	return $return_code
+}
+
+
+CVM_COMP_INSTALL_compute_loaded_component_build_src_dir()
+{
+	local component_id=$1
+	local component_version=$2
+	local return_code=1 # error/not exist by default
+	return_value="error"
+	
+	CVM_debug "* computing component \"$component_version\" build src dir..."
+
+	## do we have "in source build" or "out of source build" ?
+	local out_of_source_build_available=false
+	CVM_COMP_INSTALL_get_value_from_cached_component_for "out_of_source_build_available"
+	return_code=$?
+	if [[ $return_code -eq 0 ]]; then
+		## explicitely given : we obey
+		out_of_source_build_available=$return_value
+	else
+		## try to infer it ourselves
+		CVM_COMP_INSTALL_get_value_from_cached_component_for "build_mode"
+		return_code=$?
+		case $return_value in
+		"cmake")
+			## yes, this build mode allows OOS build
+			out_of_source_build_available=true
+			;;
+		### anything else
+		*)
+			## safety, don't enable OOS build
+			do_nothing=1
+			;;
+		esac
+	fi
+	CVM_debug "* component \"$component_version\" allows OOS build : $out_of_source_build_available"
+
+	## so...
+	return_code=1 # error
+	case $out_of_source_build_available in
+	"true")
+		return_value="$(CVM_COMPONENT_get_component_shared_src_dir $component_version)"
+		return_code=0
+		;;
+	"false")
+		return_value="$(CVM_COMPONENT_get_component_build_dir $component_version)"
+		return_code=0
+		;;
+	### anything else
+	*)
+		OSL_OUTPUT_display_error_message "error reading OOS build mode !"
+		##
+		;;
+	esac
+	
+	CVM_debug "* component \"$component_version\" build dir is : $return_value"
+
+	return $return_code
+}
+
+
+CVM_COMP_INSTALL_ensure_loaded_component_shared_src_are_available()
+{
+	local component_id=$1
+	local component_version=$2
+	local return_code=1 # error/not exist by default
+	
+	CVM_debug "* ensuring that component \"$component_version\" SHARED src are available..."
+
+	## chek rsrc
+	local rsrc_id=$component_version.$CVM_COMP_SRC_RSRC_ID_PART
+	local rsrc_dir="$CVM_SRC_DIR"
+	OSL_RSRC_check "$rsrc_dir" "$rsrc_id"
+	if [[ $? -eq 0 ]]; then
+		## rsrc is already OK' nothing to do
+		CVM_debug "  -> this rsrc is already available."
+		return 0
+	fi
+
+
+	OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id"
+	
+	## how do we get the src ??
+	CVM_COMP_INSTALL_get_value_from_cached_component_for "src_obtention_mode"
+	return_code=1 # error/not exist by default
+	case $return_value in
+	### from a git repo
+	"git")
+		OSL_OUTPUT_warn_not_implemented "git"
+		return_code=1 # error
+		;;
+	### from a svn repo
+	"svn")
+		OSL_OUTPUT_warn_not_implemented "svn"
+		return_code=1 # error
+		;;
+	### from an archive
+	"archive")
+		CVM_COMP_INSTALL_ensure_loaded_component_shared_archive_is_available "$component_id" "$component_version"
+		if [[ $? -eq 0 ]]; then
+			## now we must unpack the archive
+
+			## a little trick to handle archives which don't unpack in expected dir
+			CVM_COMP_INSTALL_get_value_from_cached_component_for "unexpected_archive_unpack_dir"
+			local unexpected_archive_unpack_dir="$return_value"
+			## note : don't care if none set, then will be ignored
+			
+			OSL_ARCHIVE_unpack_to "$(CVM_COMPONENT_get_component_shared_archive_path $component_version)" "$(CVM_COMPONENT_get_component_shared_src_dir $component_version)" "$unexpected_archive_unpack_dir"
+			return_code=$?
+		fi
+		;;
+	### directly from a path
+	"path")
+		## first ensure that component is built
+		OSL_OUTPUT_warn_not_implemented "path"
+		return_code=1 # error
+		;;
+	### no info
+	"")
+		OSL_OUTPUT_display_error_message "Can't find how to get given component source code..."
+		## return_code stays NOK
+		;;
+	### anything else
+	*)
+		OSL_OUTPUT_display_error_message "Unknown source obtention method : \"$return_value\""
+		## return_code stays NOK
+		;;
+	esac
+
+	if [[ $return_code -ne 0 ]]; then
+		OSL_RSRC_end_managed_write_operation_with_error "$rsrc_dir" "$rsrc_id"
+	else
+		OSL_RSRC_end_managed_write_operation "$rsrc_dir" "$rsrc_id"
+		if [[ $? -ne 0 ]]; then
+			OSL_OUTPUT_display_error_message "Concurrent access to \"$component_version\" !"
+			return_code=1 # error
+		fi
+	fi
+
+	return $return_code
+}
+
+
+CVM_COMP_INSTALL_ensure_loaded_component_shared_archive_is_available()
+{
+	local component_id=$1
+	local component_version=$2
+	local return_code=1 # error/not exist by default
+	
+	CVM_debug "* ensuring that component \"$component_version\" shared archive is available..."
+
+	## chek rsrc
+	local rsrc_id=$component_version.$CVM_COMP_ARCHIVE_RSRC_ID_PART
+	local rsrc_dir="$CVM_ARCHIVES_DIR"
+	OSL_RSRC_check "$rsrc_dir" "$rsrc_id"
+	if [[ $? -eq 0 ]]; then
+		## rsrc is already OK' nothing to do
+		CVM_debug "  -> this rsrc is already available."
+		return 0
+	fi
+
+
+	OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id"
+	
+	## how do we get the archive ??
+	CVM_COMP_INSTALL_get_value_from_cached_component_for "archive_obtention_mode"
+	return_code=1 # error/not exist by default
+	case $return_value in
+	### from the web
+	"download")
+		OSL_OUTPUT_warn_not_implemented "download"
+		return_code=1 # error
+		;;
+	### directly from a path
+	"path")
+		CVM_COMP_INSTALL_get_value_from_cached_component_for "archive_path"
+		if [[ $? -ne 0 ]]; then
+			OSL_OUTPUT_display_error_message "Can't find path of given component archive..."
+		else
+			local archive_path=$return_value
+			if ! [[ -f "$archive_path" ]]; then
+				OSL_OUTPUT_display_error_message "Can't find given component archive path : $archive_path"
+			else
+				mkdir -p "$CVM_ARCHIVES_DIR/$component_version"
+				cp "$archive_path" "$CVM_ARCHIVES_DIR/$component_version"
+				return_code=$?
+			fi
+		fi
+		;;
+	### no info
+	"")
+		OSL_OUTPUT_display_error_message "Can't find how to get given component archive..."
+		## return_code stays NOK
+		;;
+	### anything else
+	*)
+		OSL_OUTPUT_display_error_message "Unknown archive obtention method : \"$return_value\""
+		## return_code stays NOK
+		;;
+	esac
+
+	if [[ $return_code -ne 0 ]]; then
+		OSL_RSRC_end_managed_write_operation_with_error "$rsrc_dir" "$rsrc_id"
+		OSL_OUTPUT_display_error_message "Can't find given component archive path : $archive_path"
+	else
+		OSL_RSRC_end_managed_write_operation "$rsrc_dir" "$rsrc_id"
+		if [[ $? -ne 0 ]]; then
+			OSL_OUTPUT_display_error_message "Concurrent access to \"$component_version\" !"
+			return_code=1 # error
+		fi
+	fi
+
+	if [[ $return_code -ne 0 ]]; then
+		OSL_OUTPUT_display_error_message "couldn't obtain component \"$component_version\" archive..."
+	else
+		CVM_debug "* component \"$component_version\" shared archive obtained successfully."
+	fi
+
+	return $return_code
+}
+

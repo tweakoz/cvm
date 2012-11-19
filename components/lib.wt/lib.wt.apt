@@ -1,0 +1,10 @@
+## This file is a C++VM component definition
+## C++ Version Manager https://github.com/Offirmo/cvm
+
+## requirements :
+## (none -> handled by apt)
+
+
+## installation instructions :
+install_mode apt
+apt-packets witty witty-dbg witty-dev witty-doc

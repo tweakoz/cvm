@@ -1,0 +1,8 @@
+#! /bin/bash
+
+echo "TOTO = $TOTO"
+
+	echo "BOOST_ROOT       : $BOOST_ROOT"
+	echo "BOOST_INCLUDEDIR : $BOOST_INCLUDEDIR"
+	echo "BOOST_LIBRARYDIR : $BOOST_LIBRARYDIR"
+	

@@ -18,9 +18,10 @@ CVM_COMMANDS_print_status()
 	echo "++++   C++ Version Manager   ++++"
 	echo "* version           : $CVM_VERSION"
 	echo "* stamp             : $(stat -c %y "$OSL_INIT_script_full_path")"
-	echo "* current compset   : `cat \"$CVM_ACTIVE_COMPSET\"`"
+	echo "* current compset   : \"`cat \"$CVM_ACTIVE_COMPSET\"`\""
 	echo "* compset count     : [TODO]"
-	echo "* internal data dir : $CVM_DATA_DIR"
+	echo "* default data dir  : $CVM_DEFAULT_DATA_DIR"
+	echo "* current data dir  : $CVM_DATA_DIR"
 	echo "* component set dir : $CVM_COMPSETS_DIR"
 }
 

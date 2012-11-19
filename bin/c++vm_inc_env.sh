@@ -9,8 +9,8 @@
 
 
 ## current version
-CVM_VERSION="0.1.0"
-CVM_STAMP="2012/11/03"
+CVM_VERSION="0.2.0"
+CVM_STAMP="2012/11/20"
 
 
 ## Various constants
@@ -20,9 +20,15 @@ CVM_INSTALL_DIR="$OSL_INIT_script_full_dir/.."
 CVM_COMP_INSTALL_FINAL_DIR_NAME="result"
 CVM_ROOT_COMPONENT_NAME="app"
 
+CVM_COMP_INSTALL_RSRC_ID_PART="install"
+CVM_COMP_BUILD_RSRC_ID_PART="build"
+CVM_COMP_SRC_RSRC_ID_PART="src"
+CVM_COMP_ARCHIVE_RSRC_ID_PART="archive"
+
 
 ## a dir where we'll put our stuff
-CVM_DATA_DIR=$HOME/.c++vm
+CVM_DEFAULT_DATA_DIR=$HOME/.c++vm
+CVM_DATA_DIR=$CVM_DEFAULT_DATA_DIR
 OSL_INIT_ensure_dir $CVM_DATA_DIR
 
 ## A config file where user will be able to change stuff
@@ -32,7 +38,7 @@ if [[ -f "$CVM_CONFIG_PATH" ]]; then
 	## exists, nothing to do
 	do_nothing=1
 else
-	## crate the file from a model if possible
+	## create the file from a model if possible
 	touch "$CVM_CONFIG_PATH"
 	config_template="$CVM_INSTALL_DIR/misc/config.example"
 	#echo "testing $config_template..."
@@ -53,6 +59,16 @@ if [[ -z "$CVM_CONFIG_SOURCED" ]]; then
 	OSL_debug "sourcing $CVM_CONFIG_PATH..."
 	source "$CVM_CONFIG_PATH"
 	CVM_CONFIG_SOURCED=true
+fi
+
+## data dir may have changed
+OSL_INIT_ensure_dir $CVM_DATA_DIR
+## early exit in case of failure :
+if [[ ! -d "$CVM_DATA_DIR" ]]; then
+	echo "XXX no write rights to create data dir : $CVM_DATA_DIR"
+	echo "XXX can't continue"
+	echo ""
+	exit 1
 fi
 
 ## a dir where we'll cache stuff.

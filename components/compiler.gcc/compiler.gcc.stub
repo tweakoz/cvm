@@ -1,9 +1,8 @@
 ## This file is a C++VM component definition
 ## C++ Version Manager https://github.com/Offirmo/cvm
 
-## requirements
-## (none)
+## requirements :
+## (none, this is a stub)
 
-## installation instructions
-install_mode apt
-apt-packets buil-essentials
+## installation instructions :
+install_mode do_nothing

@@ -121,7 +121,7 @@ CVM_COMPFILE_parse_compfile()
 			## An error was encountered.
 			## An error message should have been displayed.
 			## But only here do we know the line number
-			echo -e "$OSL_OUTPUT_STYLE_PROBLEM error line $line_count in file \"$compfile_path\" !$OSL_OUTPUT_STYLE_DEFAULT"
+			echo -e "$OSL_OUTPUT_STYLE_PROBLEM error related to line $line_count of file \"$compfile_path\" !$OSL_OUTPUT_STYLE_DEFAULT"
 			## no need to parse further
 			break
 		fi
@@ -187,7 +187,9 @@ CVM_COMPFILE_parse_compfile_line()
 		;;
 	### ??? command not recognized
 	*)
-		OSL_OUTPUT_warn "unrecognized command : \"$line_cmd\"..."
+		## don't care : it must be one of the many install commands
+		do_nothing=1
+		##OSL_OUTPUT_warn "unrecognized command : \"$line_cmd\"..."
 		#return_code=1 ## error
 		;;
 	esac
@@ -285,9 +287,74 @@ CVM_COMPFILE_process_line_require()
 		CVM_COMP_SELECTION_add_component_dependency_if_needed  $CVM_COMPFILE_current_component  $component_id
 		
 		## now parse additional arguments
-		local required_version="N/A" ## by default
-		local component_source="integrated" ## by default
-		## TODO
+		local component_source="" ## for now
+		local min_version_authorized="" ## for now
+		local max_version_authorized="" ## for now
+		local exact_version_required="" ## for now
+		# to split lines along comma, we must change the IFS
+		IFS=',' # this makes IFS the comma
+		local count=0
+		return_code=0 # ok until found otherwise
+		for raw_block in $line_data; do
+			#CVM_debug "raw_block = $raw_block"
+			# now we split along semicolon
+			IFS=':' # this makes IFS the comma
+			typeset -a key_value=( $raw_block )
+			IFS=',' # this makes IFS a comma again
+			local key=$(OSL_STRING_trim "${key_value[0]}")
+			local value=$(OSL_STRING_trim "${key_value[1]}")
+			count=$(expr $count + 1)
+			if [[ $count -eq 1 ]]; then
+				## skip this one
+				do_nothing=1
+			else
+				CVM_debug "parsing require option ($key, $value)"
+				case $key in
+				"stub")
+					## XXX TO IMPROVE
+					CVM_COMPFILE_process_explicit_version_requirement "stub" $exact_version_required
+					return_code=$?
+					if [[ $return_code -ne 0 ]]; then
+						## an error msg should have been displayed
+						break
+					else
+						exact_version_required=$return_value
+						CVM_debug "explicit required version is now : \"$exact_version_required\"."
+					fi
+					;;
+				"version")
+					CVM_COMPFILE_process_generic_version_requirement "$value" "$min_version_authorized" "$max_version_authorized" "$exact_version_required"
+					return_code=$?
+					#CVM_debug "rv $return_code"
+					if [[ $return_code -eq 11 ]]; then
+						min_version_authorized=$return_value
+						return_code=0 ## OK again
+					elif [[ $return_code -eq 22 ]]; then
+						max_version_authorized=$return_value
+						return_code=0 ## OK again
+					elif [[ $return_code -eq 33 ]]; then
+						exact_version_required=$return_value
+						return_code=0 ## OK again
+					else
+						OSL_OUTPUT_display_error_message "could'nt understand version requirement : $value"
+						return_code=1 ## error
+						break
+					fi
+					;;
+				*)
+					## unrecognized
+					OSL_OUTPUT_display_error_message "unrecognized option : $key"
+					return_code=1 ## error
+					break
+					;;
+				esac
+			fi
+		done
+		OSL_INIT_restore_default_IFS
+
+		if [[ $return_code -ne 0 ]]; then
+			return $return_code
+		fi
 		
 		## add the required component if needed
 		CVM_COMP_SELECTION_add_if_needed $component_id
@@ -295,38 +362,112 @@ CVM_COMPFILE_process_line_require()
 		if [[ $comp_just_created -eq 1 ]]; then
 			## add required component own deps
 			## this is complex, offload it
-			CVM_COMPFILE_process_component $component_id $component_source
+			CVM_COMP_SELECTION_select_component $component_id "$component_source" "$min_version_authorized" "$max_version_authorized" "$exact_version_required"
 			return_code=$?
 		else
 			return_code=0 ## all is fine
 		fi
 		
 	fi ## param OK
-	
+	OSL_INIT_restore_default_IFS
+
 	return $return_code
 }
 
-CVM_COMPFILE_process_component()
+
+CVM_COMPFILE_process_generic_version_requirement()
 {
-	local component_id=$1
-	local component_source=$2
-	local return_code=1 # error by default
-	
-	CVM_debug "processing subcomponent \"$component_id\"..."
-	
-	CVM_COMPONENT_find_best_matching_component $component_id
-	return_code=$?
-	if [[ $return_code -ne 0 ]]; then
-		## comp couldn't be found...
-		## an error was already displayed
-		do_nothing=1
-	else
-		local component_path=$return_value
-		CVM_debug "found component $component_id at $component_path"
-		## component found
-		CVM_COMPFILE_parse_compfile $return_value $component_id "CVM_COMPFILE_parse_compfile_line"
+	local version_requirement=$1
+	local min_version_authorized=$2
+	local max_version_authorized=$3
+	local exact_version_required=$4
+	local return_code=1 # error by default (FOR THIS FUNC, SPECIAL MEANING)
+	return_value="error" # error by default
+
+	CVM_debug "CVM_COMPFILE_process_generic_version_requirement \"$version_requirement\" with $min_version_authorized/$exact_version_required/$max_version_authorized..."
+
+	local vr_length=${#version_requirement}
+	local possible_plus_pos=$(expr $vr_length - 1)
+	CVM_debug "\"$version_requirement\" ($vr_length) ~?${version_requirement:0:1} +?${version_requirement:$possible_plus_pos:1}"
+	if [[ "${version_requirement:0:1}" == "~" ]]; then
+		OSL_OUTPUT_warn_not_implemented "CVM_COMPFILE_process_version_requirement ~"
+		##[[ $return_code -eq 0]] && return_code=22
+	elif [[ "${version_requirement:$possible_plus_pos:1}" == "+" ]]; then
+		CVM_COMPFILE_process_min_version_requirement "${version_requirement:0:$possible_plus_pos}" "$min_version_authorized"
 		return_code=$?
+		if [[ $return_code -eq 0 ]]; then
+			return_code=11
+		fi
+		## REM return value was changed by call above
+	else
+		## this is an explicit version
+		CVM_COMPFILE_process_explicit_version_requirement "$version_requirement" "$exact_version_required"
+		return_code=$?
+		if [[ $return_code -eq 0 ]]; then
+			return_code=33
+		fi
+		## REM return value was changed by call above
 	fi
-	
+
+	return $return_code
+}
+
+
+CVM_COMPFILE_process_explicit_version_requirement()
+{
+	local explicit_required_version=$1
+	local previous_explicit_required_version=$2
+	local return_code=1 # error by default
+	return_value="error"
+
+	CVM_debug "CVM_COMPFILE_process_explicit_version_requirement \"$explicit_required_version\"..."
+
+	if [[ -z "$previous_explicit_required_version" ]]; then
+		## no conflict, OK
+		return_code=0
+		return_value="$explicit_required_version"
+	elif [[ "$previous_explicit_required_version" == "$explicit_required_version" ]]; then
+		## no conflict, OK
+		return_code=0
+		return_value="$explicit_required_version"
+	else
+		## conflict, NOK
+		OSL_OUTPUT_display_error_message "Conflicting explicit version requirements : $explicit_required_version vs. $previous_explicit_required_version"
+		## ret code stays false
+	fi
+
+	return $return_code
+}
+
+
+CVM_COMPFILE_process_min_version_requirement()
+{
+	local min_required_version=$1
+	local previous_min_required_version=$2
+	local return_code=1 # error by default
+	return_value="error"
+
+	CVM_debug "CVM_COMPFILE_process_min_version_requirement \"$min_required_version\"..."
+
+	if [[ -z "$previous_min_required_version" ]]; then
+		## no conflict, OK
+		return_code=0
+		return_value="$min_required_version"
+	else
+		OSL_VERSION_test_smaller_or_equal "$min_required_version" "$previous_min_required_version"
+
+		if [[ $? -eq 0 ]]; then
+			## new value is smaller or equal -> we keep the bigger
+			return_code=0
+			return_value="$previous_min_required_version"
+		else
+			## new value replace former
+			return_code=0
+			return_value="$min_required_version"
+		fi
+	fi
+
+	CVM_debug "  -> $return_value"
+
 	return $return_code
 }
