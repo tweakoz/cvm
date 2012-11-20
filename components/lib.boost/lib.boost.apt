@@ -1,1 +1,11 @@
-stub
+## This file is a C++VM component definition
+## C++ Version Manager https://github.com/Offirmo/cvm
+
+## requirements :
+## (none -> handled by apt)
+
+
+## installation instructions :
+install_mode apt
+#cf. http://www.blog.highub.com/linux/install-c-boost-on-ubuntu/
+apt_packets libboost-dev

@@ -71,7 +71,7 @@ CVM_COMPSET_create_compset_if_needed()
 
 
 ## try to create the compset
-## but does nothing if it already exists
+## but *does nothing* if it already exists
 ## (useful for automatically created compsets)
 CVM_COMPSET_ensure_compset()
 {
@@ -100,35 +100,36 @@ CVM_COMPSET_create_compset()
 	CVM_debug "creating compset \"$compset_name\"..."
 	
 	## take rsrc lock
-	OSL_RSRC_begin_managed_write_operation "$CVM_COMPSETS_DIR" $compset_name
-	return_code=$?
-	if [[ $return_code -ne 0 ]]; then
-		## failure ? Should not happen...
-		echo "couldn't get write lock..."
+	local rsrc_id=$compset_name
+	local rsrc_dir=$CVM_COMPSETS_DIR
+	OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id"
+
+	## a dir for the component set
+	local COMPSET_DIR=$(CVM_COMPSET_get_compset_dir $compset_name)
+	mkdir -p "$COMPSET_DIR"
+
+	## a description file
+	local COMPSET_FILE=$(CVM_COMPSET_get_compset_compfile $compset_name)
+	## create the file from a model if possible
+	touch "$COMPSET_FILE"
+	if [[ -f "$OSL_INIT_script_full_dir/../compfile.example" ]]; then
+		## example file is available
+		cp "$OSL_INIT_script_full_dir/../compfile.example" "$COMPSET_FILE"
 	else
-		## a dir for the component set
-		local COMPSET_DIR=$(CVM_COMPSET_get_compset_dir $compset_name)
-		mkdir -p "$COMPSET_DIR"
-		
-		## a description file
-		local COMPSET_FILE=$(CVM_COMPSET_get_compset_compfile $compset_name)
-		## create the file from a model if possible
-		touch "$COMPSET_FILE"
-		if [[ -f "$OSL_INIT_script_full_dir/../compfile.example" ]]; then
-			## example file is available
-			cp "$OSL_INIT_script_full_dir/../compfile.example" "$COMPSET_FILE"
-		else
-			## build a minimal compset file
-			echo "## C++ VM component set definition" >> "$COMPSET_FILE"
-		fi
-		
-		## release lock
-		OSL_RSRC_end_managed_write_operation "$CVM_COMPSETS_DIR" $compset_name
-		return_code=$?
-		
-		## remember this compset as active
-		CVM_COMPSET_save_current_active_compset $compset_name
+		## build a minimal compset file
+		echo "## C++ VM component set definition" >> "$COMPSET_FILE"
 	fi
+	return_code=$?
+	
+	## release lock
+	OSL_RSRC_end_managed_write_operation "$rsrc_dir" "$rsrc_id"
+	if [[ $? -ne 0 ]]; then
+		OSL_OUTPUT_display_error_message "Concurrent access to compset \"$compset_name\" !"
+		return_code=1 # error
+	fi
+
+	## remember this compset as active
+	CVM_COMPSET_save_current_active_compset $compset_name
 
 	if [[ $return_code -ne 0 ]]; then
 		## failure...

@@ -45,7 +45,9 @@ CVM_COMPFILE_update_compset()
 	
 	## We will now rebuild the component selection
 	## This is a complex shared rsrc
-	OSL_RSRC_begin_managed_write_operation . $CVM_COMP_SELECTION_DIR_NAME
+	local rsrc_id=$CVM_COMP_SELECTION_DIR_NAME
+	local rsrc_dir=.
+	OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id"
 	rm -rf $CVM_COMP_SELECTION_DIR_NAME
 	mkdir $CVM_COMP_SELECTION_DIR_NAME
 	
@@ -61,10 +63,10 @@ CVM_COMPFILE_update_compset()
 		## error during file parsing
 		## An error message should already have been displayed.
 		OSL_OUTPUT_display_error_message "Update failed..."
-		OSL_RSRC_end_managed_write_operation_with_error . $CVM_COMP_SELECTION_DIR_NAME
+		OSL_RSRC_end_managed_write_operation_with_error "$rsrc_dir" "$rsrc_id"
 	else
 		## everything went OK
-		OSL_RSRC_end_managed_write_operation . $CVM_COMP_SELECTION_DIR_NAME
+		OSL_RSRC_end_managed_write_operation "$rsrc_dir" "$rsrc_id"
 	fi
 	
 	CVM_debug "* moving back to \"$oldwd\"..."
@@ -179,12 +181,12 @@ CVM_COMPFILE_parse_compfile_line()
 		return_code=$?
 		;;
 	### ...
-	"stub")
-		CVM_COMPFILE_process_line_stub "$line_data"
-		return_code=$?
-		## means that this file contains no more useful information
-		break ## we can stop here
-		;;
+	#"stub")
+	#	CVM_COMPFILE_process_line_stub "$line_data"
+	#	return_code=$?
+	#	## means that this file contains no more useful information
+	#	break ## we can stop here
+	#	;;
 	### ??? command not recognized
 	*)
 		## don't care : it must be one of the many install commands
@@ -236,17 +238,34 @@ CVM_COMPFILE_process_line_minimum_required_version()
 
 CVM_COMPFILE_process_line_language()
 {
-	# nothing for now, no warning
-	do_nothing=1
+	local line_data=$1
+	local return_code=1 # error by default
+	
+	CVM_debug "processing compfile cmd \"language\"..."
+	
+	OSL_OUTPUT_warn_not_implemented "language"
+	#return_code=$?
+	
+	return $return_code
 }
 
 CVM_COMPFILE_process_line_include()
 {
+	local line_data=$1
+	local return_code=1 # error by default
+	
+	CVM_debug "processing compfile cmd \"include\"..."
+	
 	OSL_OUTPUT_warn_not_implemented "include"
+	#return_code=$?
+	
+	return $return_code
 }
 
 CVM_COMPFILE_process_line_stub()
 {
+	xxx deprecated
+	
 	local line_data=$1
 	local return_code=1 # error by default
 	

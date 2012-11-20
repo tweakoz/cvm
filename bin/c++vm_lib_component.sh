@@ -12,31 +12,6 @@
 ## REM : required includes are in main file
 
 
-CVM_COMPONENT_process_component()
-{
-	local component_id=$1
-	local required_version=$2
-	local component_source=$3
-	local return_code=1 # error by default
-	
-	CVM_debug "requiring component : $component_id"
-	CVM_debug "   required version : $required_version"
-	CVM_debug "   component source : $component_source"
-
-	CVM_COMPONENT_find_component $component_id $component_source
-	return_code=$?
-	if [[ $return_code -ne 0 ]]; then
-		## comp couldn't be found...
-		do_nothing=1
-	else
-		local component_path=$return_value
-		## component found
-		
-		OSL_OUTPUT_abort_execution_because_not_implemented
-	fi
-	
-	return $return_code
-}
 
 
 CVM_COMPONENT_find_component_dir()
@@ -171,6 +146,20 @@ CVM_COMPONENT_get_component_type()
 }
 
 
+CVM_COMPONENT_get_component_target_name()
+{
+	local component_id=$1
+	local return_code=1 # error by default
+
+	#CVM_debug "parsing component target name for : $component_id"
+
+	echo "${component_id#*.}"
+	return_code=0
+	
+	return $return_code
+}
+
+
 CVM_COMPONENT_get_component_shared_archive_path()
 {
 	local component_version=$1
@@ -201,7 +190,18 @@ CVM_COMPONENT_get_component_build_dir()
 	local component_version=$1
 
 	## REM : we are supposed to be in the current compset dir
-	echo "$CVM_COMP_INSTALL_FINAL_DIR_NAME/build/$component_version"
+	echo "$CVM_COMP_INSTALL_BUILD_DIR_NAME/$component_version"
+
+	return 0
+}
+
+
+CVM_COMPONENT_get_component_prefix()
+{
+	local component_version=$1
+
+	## REM : we are supposed to be in the current compset dir
+	echo "$CVM_COMP_INSTALL_FINAL_DIR_NAME/$component_version"
 
 	return 0
 }
@@ -212,7 +212,7 @@ CVM_COMPONENT_get_component_include_dir()
 	local component_version=$1
 
 	## REM : we are supposed to be in the current compset dir
-	echo "$CVM_COMP_INSTALL_FINAL_DIR_NAME/include/$component_version"
+	echo "$(CVM_COMPONENT_get_component_prefix "$component_version")/include"
 
 	return 0
 }
@@ -223,7 +223,7 @@ CVM_COMPONENT_get_component_lib_dir()
 	local component_version=$1
 
 	## REM : we are supposed to be in the current compset dir
-	echo "$CVM_COMP_INSTALL_FINAL_DIR_NAME/lib/$component_version"
+	echo "$(CVM_COMPONENT_get_component_prefix "$component_version")/lib"
 
 	return 0
 }
@@ -234,7 +234,7 @@ CVM_COMPONENT_get_component_bin_dir()
 	local component_version=$1
 
 	## REM : we are supposed to be in the current compset dir
-	echo "$CVM_COMP_INSTALL_FINAL_DIR_NAME/bin/$component_version"
+	echo "$(CVM_COMPONENT_get_component_prefix "$component_version")/bin"
 
 	return 0
 }

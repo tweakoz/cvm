@@ -7,4 +7,5 @@
 
 ## installation instructions :
 install_mode apt
-apt-packets witty witty-dbg witty-dev witty-doc
+apt_packets  witty witty-dbg witty-dev
+# witty-doc

@@ -1,0 +1,9 @@
+#! /bin/bash
+
+## C++ Version Manager
+## by Offirmo, https://github.com/Offirmo/cvm
+##
+## This file is a simple wrapper provided for convenient invocation.
+
+
+c++vm.sh $*

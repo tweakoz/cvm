@@ -4,7 +4,7 @@
 ## by Offirmo, https://github.com/Offirmo/cvm
 ##
 ## This file defines :
-##   the operations on component selection files
+##   the installation of a component
 ##
 ## This file is not meant to be executed, only sourced :
 ##   source c++vm_lib_comp_installation.sh
@@ -30,18 +30,24 @@ CVM_COMP_INSTALL_upgrade_compset()
 	CVM_debug "* moving to \"$COMPSET_DIR\"..."
 	cd "$COMPSET_DIR"
 	
-	## We will now rebuild the component selection
+	## We will now rebuild the component installation
 	## This is a complex shared rsrc
-	OSL_RSRC_begin_managed_write_operation . $CVM_COMP_INSTALL_FINAL_DIR_NAME
+	local rsrc_id="components_installation"
+	local rsrc_dir=.
+	OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id"
 
 	## XXX make more subtile
 	#rm -rf $CVM_COMP_INSTALL_FINAL_DIR_NAME
+	#echo "" > "$CVM_COMP_INSTALL_FINAL_DIR_NAME/$CVM_DEFAULT_ENV_FILE_NAME"
 	
-	mkdir $CVM_COMP_INSTALL_FINAL_DIR_NAME
-	mkdir $CVM_COMP_INSTALL_FINAL_DIR_NAME/include
-	mkdir $CVM_COMP_INSTALL_FINAL_DIR_NAME/build
-	mkdir $CVM_COMP_INSTALL_FINAL_DIR_NAME/bin
-	mkdir $CVM_COMP_INSTALL_FINAL_DIR_NAME/lib
+	mkdir -p "$CVM_COMP_INSTALL_FINAL_DIR_NAME"
+	mkdir -p "$CVM_COMP_INSTALL_BUILD_DIR_NAME"
+	mkdir -p "$CVM_COMP_INCLUDES_FOR_INDEXER_DIR_NAME"
+
+#	mkdir -p $CVM_COMP_INSTALL_FINAL_DIR_NAME/include
+#	mkdir -p $CVM_COMP_INSTALL_FINAL_DIR_NAME/build
+#	mkdir -p $CVM_COMP_INSTALL_FINAL_DIR_NAME/bin
+#	mkdir -p $CVM_COMP_INSTALL_FINAL_DIR_NAME/lib
 	
 	## start with root component
 	CVM_COMP_INSTALL_parse_compselfile_for_component $CVM_ROOT_COMPONENT_NAME
@@ -51,10 +57,14 @@ CVM_COMP_INSTALL_upgrade_compset()
 		## error during file parsing
 		## An error message should already have been displayed.
 		OSL_OUTPUT_display_error_message "Upgrade failed..."
-		OSL_RSRC_end_managed_write_operation_with_error . $CVM_COMP_INSTALL_FINAL_DIR_NAME
+		OSL_RSRC_end_managed_write_operation_with_error "$rsrc_dir" "$rsrc_id"
 	else
 		## everything went OK
-		OSL_RSRC_end_managed_write_operation . $CVM_COMP_INSTALL_FINAL_DIR_NAME
+		OSL_RSRC_end_managed_write_operation "$rsrc_dir" "$rsrc_id"
+		if [[ $? -ne 0 ]]; then
+			OSL_OUTPUT_display_error_message "Concurrent access to installed components !"
+			return_code=1 # error
+		fi
 	fi
 	
 	CVM_debug "* moving back to \"$oldwd\"..."
@@ -78,6 +88,7 @@ CVM_COMP_INSTALL_parse_compselfile_for_component()
 	
 	return $return_code
 }
+
 
 CVM_COMP_INSTALL_parse_compselfile_line()
 {
@@ -197,27 +208,8 @@ CVM_COMP_INSTALL_process_line_require()
 		local component_id=$(OSL_STRING_trim ${line_data_comma_splitted[0]})
 		
 		## check if this component is already installed properly
-		OSL_RSRC_check $CVM_COMP_INSTALL_FINAL_DIR_NAME/build $component_id
-		return_code=$? ## REM 0 = OK
-		if [[ $return_code -eq 0 ]]; then
-			## OK, already installed
-			CVM_debug "Component \"$component_id\" is already installed properly."
-			do_nothing=1
-		else
-			## parse this component own selection file
-			## in order to install its dependencies first
-			CVM_COMP_INSTALL_parse_compselfile_for_component $component_id
-			return_code=$?
-		
-			if [[ $return_code -ne 0 ]]; then
-				OSL_OUTPUT_display_error_message "dependencies failed for component \"$component_id\"..."
-				## return code stays NOK
-			else
-				## then install the component itself
-				CVM_COMP_INSTALL_ensure_component_installed $component_id
-				return_code=$?
-			fi ## dependencies OK ?
-		fi ## already installed OK ?
+		CVM_COMP_INSTALL_ensure_component_installed $component_id
+		return_code=$?
 	fi ## param OK ?
 	
 	CVM_debug "require line processing done : $return_code"
@@ -231,26 +223,69 @@ CVM_COMP_INSTALL_ensure_component_installed()
 {
 	local component_id=$1
 	local return_code=1 # error/not exist by default
-	
-	CVM_debug "installing component : $component_id / $CVM_COMP_INSTALL_last_seen_selected_version"
 
-	OSL_RSRC_begin_managed_write_operation $CVM_COMP_INSTALL_FINAL_DIR_NAME/build $component_id
+	CVM_debug "ensuring that component \"$component_id\" is fully installed..."
 	
-	CVM_COMP_INSTALL_load_component_data  $component_id  $CVM_COMP_INSTALL_last_seen_selected_version
+	## check if this component is already installed properly
+	local rsrc_id=$component_id.$CVM_COMP_RSRC_ID_PART
+	local rsrc_dir=$CVM_COMP_INSTALL_FINAL_DIR_NAME
+	OSL_RSRC_check "$rsrc_dir" "$rsrc_id"
+	if [[ $? -eq 0 ]]; then
+		## rsrc is already OK' nothing to do
+		CVM_debug "  -> this rsrc is already available."
+		return 0
+	fi
+
+	## parse this component own selection file
+	## in order to install its dependencies first
+	CVM_COMP_INSTALL_parse_compselfile_for_component $component_id
 	return_code=$?
-	
-	CVM_COMP_INSTALL_ensure_loaded_component_is_installed  $component_id  $CVM_COMP_INSTALL_last_seen_selected_version
-	return_code=$?
-	
 	if [[ $return_code -ne 0 ]]; then
-		## error during file parsing
-		## An error message should already have been displayed.
-		OSL_OUTPUT_display_error_message "Install failed..."
-		OSL_RSRC_end_managed_write_operation_with_error $CVM_COMP_INSTALL_FINAL_DIR_NAME/build $component_id
+		OSL_OUTPUT_display_error_message "dependencies failed for component \"$component_id\"..."
+		## return code stays NOK
 	else
-		## everything went OK
-		OSL_OUTPUT_display_success_message "Install of $component_id done"
-		OSL_RSRC_end_managed_write_operation $CVM_COMP_INSTALL_FINAL_DIR_NAME/build $component_id
+		## then install the component itself
+		OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id"
+		
+		CVM_debug "installing component : $component_id / $CVM_COMP_INSTALL_last_seen_selected_version"
+
+		CVM_COMP_INSTALL_load_component_data  $component_id  $CVM_COMP_INSTALL_last_seen_selected_version
+		return_code=$?
+		if [[ $return_code -ne 0 ]]; then
+			## error during file parsing
+			## An error message should already have been displayed.
+			OSL_OUTPUT_display_error_message "Component data read failed......"
+		else
+			CVM_COMP_INSTALL_ensure_loaded_component_is_installed  $component_id  $CVM_COMP_INSTALL_last_seen_selected_version
+			return_code=$?
+		fi
+
+		## post processing
+		if [[ $return_code -eq 0 ]]; then
+			CVM_COMP_INSTALL_collect_env_infos_for_freshly_installed_component  $component_id  $CVM_COMP_INSTALL_last_seen_selected_version
+			return_code=$?
+		fi
+		if [[ $return_code -eq 0 ]]; then
+			CVM_COMP_INSTALL_collect_includes_for_freshly_installed_component  $component_id  $CVM_COMP_INSTALL_last_seen_selected_version
+			return_code=$?
+		fi
+			
+		if [[ $return_code -ne 0 ]]; then
+			## An error message should already have been displayed.
+			OSL_RSRC_end_managed_write_operation_with_error "$rsrc_dir" "$rsrc_id"
+		else
+			## everything went OK
+			OSL_OUTPUT_display_success_message "Install of $component_id done"
+			OSL_RSRC_end_managed_write_operation "$rsrc_dir" "$rsrc_id"
+			if [[ $? -ne 0 ]]; then
+				OSL_OUTPUT_display_error_message "Concurrent access to \"$component_version\" !"
+				return_code=1 # error
+			fi
+		fi
+	fi ## dependencies
+
+	if [[ $return_code -ne 0 ]]; then
+		OSL_OUTPUT_display_error_message "Install failed..."
 	fi
 	
 	return $return_code
@@ -289,6 +324,59 @@ CVM_COMP_INSTALL_load_component_data()
 	return $return_code
 }
 
+
+CVM_COMP_INSTALL_collect_env_infos_for_freshly_installed_component()
+{
+	local component_id=$1
+	local component_version=$2
+	local return_code=1 # error/not exist by default
+	
+	CVM_debug "Storing env infos for $component_id..."
+
+	local env_file="$CVM_COMP_INSTALL_FINAL_DIR_NAME/$CVM_DEFAULT_ENV_FILE_NAME"
+	local lib_dir=$(CVM_COMPONENT_get_component_lib_dir "$component_version")
+	lib_dir=$(readlink -f "$lib_dir")
+	local bin_dir=$(CVM_COMPONENT_get_component_bin_dir "$component_version")
+	bin_dir=$(readlink -f "$bin_dir")
+
+	if [[ -d "$lib_dir" ]]; then
+		echo "OSL_PATHVAR_prepend_to_PLV_if_not_already_there  LD_LIBRARY_PATH \"$lib_dir\"" >> "$env_file"
+	fi
+
+	if [[ -d "$bin_dir" ]]; then
+		echo "OSL_PATHVAR_prepend_to_PLV_if_not_already_there  PATH            \"$bin_dir\"" >> "$env_file"
+	fi
+
+	return_code=0
+	
+	return $return_code
+}
+
+
+CVM_COMP_INSTALL_collect_includes_for_freshly_installed_component()
+{
+	local component_id=$1
+	local component_version=$2
+	local return_code=1 # error/not exist by default
+	
+	CVM_debug "Linking includes for $component_id..."
+
+	local comp_inc_dir=$(CVM_COMPONENT_get_component_include_dir "$component_version")
+	comp_inc_dir=$(readlink -f "$comp_inc_dir")
+
+	if [[ -d "$comp_inc_dir" ]]; then
+		local comp_name=$(CVM_COMPONENT_get_component_target_name "$component_id")
+		
+		local index_inc_dir="$CVM_COMP_INCLUDES_FOR_INDEXER_DIR_NAME/$comp_name"
+		index_inc_dir=$(readlink -f "$index_inc_dir")
+	
+		ln --symbolic "$comp_inc_dir" "$index_inc_dir"
+	fi
+
+	return_code=0
+	
+	return $return_code
+}
 
 
 CVM_COMP_INSTALL_parse_line_load_compfile_data()
@@ -332,7 +420,7 @@ CVM_COMP_INSTALL_parse_line_load_compfile_data()
 	### any other command
 	*)
 		CVM_COMP_INSTALL_current_component_data="$CVM_COMP_INSTALL_current_component_data
-		$line"
+$line"
 		return_code=0
 		;;
 	esac
@@ -434,10 +522,52 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_installed()
 
 CVM_COMP_INSTALL_ensure_loaded_component_is_installed_via_apt()
 {
+	local component_id=$1
+	local component_version=$2
 	local return_code=1 # error/not exist by default
 
-	OSL_OUTPUT_warn_not_implemented "CVM_COMP_INSTALL_ensure_loaded_component_is_installed_via_apt"
+	## chek rsrc
+	local rsrc_id=$component_version.$CVM_COMP_APT_PKT_RSRC_ID_PART
+	local rsrc_dir="$CVM_COMP_INSTALL_FINAL_DIR_NAME"
+	OSL_RSRC_check "$rsrc_dir" "$rsrc_id"
+	if [[ $? -eq 0 ]]; then
+		## rsrc is already OK' nothing to do
+		CVM_debug "  -> this rsrc is already available."
+		return 0
+	fi
+
+	## now we can install
 	
+	local OSlmomd_bkp=$OSL_STAMP_last_managed_operation_modif_date
+	OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id"
+
+	CVM_COMP_INSTALL_get_value_from_cached_component_for "apt_packets"
+	return_code=$?
+	if [[ $? -ne 0 ]]; then
+		OSL_OUTPUT_display_error_message "Can't read apt packets given component archive..."
+	else
+		local apt_packets=$return_value
+		sudo apt-get install --yes $apt_packets
+		return_code=$?
+	fi
+
+	if [[ $return_code -ne 0 ]]; then
+		OSL_RSRC_end_managed_write_operation_with_error "$rsrc_dir" "$rsrc_id"
+	else
+		OSL_RSRC_end_managed_write_operation "$rsrc_dir" "$rsrc_id"
+		if [[ $? -ne 0 ]]; then
+			OSL_OUTPUT_display_error_message "Concurrent access to \"$component_version\" !"
+			return_code=1 # error
+		fi
+	fi
+	OSL_STAMP_last_managed_operation_modif_date=$OSlmomd_bkp
+
+	OSL_OUTPUT_warn_not_implemented "TODO : collect env and includes !"
+	
+	if [[ $? -ne 0 ]]; then
+		OSL_OUTPUT_display_error_message "error while installing component \"$component_version\" with apt-get install"
+	fi
+		
 	return $return_code
 }
 
@@ -451,8 +581,9 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_built_and_installed()
 	CVM_debug "* ensuring that component \"$component_version\" is built and installed..."
 
 	## chek rsrc
-	local rsrc_id=$component_version.$CVM_COMP_INSTALL_RSRC_ID_PART
-	OSL_RSRC_check "$CVM_COMP_INSTALL_FINAL_DIR_NAME" $rsrc_id
+	local rsrc_id=$component_version.$CVM_COMP_INSTALLED_OBJS_RSRC_ID_PART
+	local rsrc_dir="$CVM_COMP_INSTALL_FINAL_DIR_NAME"
+	OSL_RSRC_check "$rsrc_dir" "$rsrc_id"
 	if [[ $? -eq 0 ]]; then
 		## rsrc is already OK' nothing to do
 		CVM_debug "  -> this rsrc is already available."
@@ -468,7 +599,8 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_built_and_installed()
 	
 	## now we can install
 	
-	OSL_RSRC_begin_managed_write_operation "$CVM_COMP_INSTALL_FINAL_DIR_NAME" "$rsrc_id"
+	local OSlmomd_bkp=$OSL_STAMP_last_managed_operation_modif_date
+	OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id"
 
 	## first check install mode
 	local install_mode="error"
@@ -488,6 +620,10 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_built_and_installed()
 		"make")
 			install_mode="auto"
 			;;
+		"bjam")
+			## for bjam, build and install are not separated
+			install_mode="do_nothing"
+			;;
 		### anything else
 		*)
 			## ??? don't know !
@@ -499,6 +635,10 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_built_and_installed()
 
 	return_code=1 # error
 	case $install_mode in
+	"do_nothing")
+		## well...
+		return_code=0
+		;;
 	"make_install")
 		## let's do it
 		local prev_wd=$(pwd)
@@ -517,14 +657,14 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_built_and_installed()
 		local include_dir="$(CVM_COMPONENT_get_component_include_dir $component_version)"
 		mkdir -p "$include_dir"
 		for file in `find -P "$build_dir" \( -name "*.h" -o -name "*.hxx" -o -name "*.hpp" -o -name "*.H" \) -type f`; do
-			echo "$file"
+			#echo "$file"
 			cp "$file" "$include_dir"
 		done
 		
 		local lib_dir="$(CVM_COMPONENT_get_component_lib_dir $component_version)"
 		mkdir -p "$lib_dir"
 		for file in `find -P "$build_dir" \( -name "*.a" -o -name "*.so" \) -type f`; do
-			echo "$file"
+			#echo "$file"
 			cp "$file" "$lib_dir"
 		done
 		
@@ -542,14 +682,15 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_built_and_installed()
 	esac
 
 	if [[ $return_code -ne 0 ]]; then
-		OSL_RSRC_end_managed_write_operation_with_error "$CVM_COMP_INSTALL_FINAL_DIR_NAME" $rsrc_id
+		OSL_RSRC_end_managed_write_operation_with_error "$rsrc_dir" "$rsrc_id"
 	else
-		OSL_RSRC_end_managed_write_operation "$CVM_COMP_INSTALL_FINAL_DIR_NAME" $rsrc_id
+		OSL_RSRC_end_managed_write_operation "$rsrc_dir" "$rsrc_id"
 		if [[ $? -ne 0 ]]; then
 			OSL_OUTPUT_display_error_message "Concurrent access to \"$component_version\" !"
 			return_code=1 # error
 		fi
 	fi
+	OSL_STAMP_last_managed_operation_modif_date=$OSlmomd_bkp
 
 	if [[ $? -ne 0 ]]; then
 		OSL_OUTPUT_display_error_message "error while installing (after build) component \"$component_version\"..."
@@ -568,8 +709,8 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_built()
 	CVM_debug "* ensuring that component \"$component_version\" is built..."
 
 	## chek rsrc
-	local rsrc_id=$component_version.$CVM_COMP_BUILD_RSRC_ID_PART
-	local rsrc_dir="$CVM_COMP_INSTALL_FINAL_DIR_NAME/build"
+	local rsrc_id=$component_version.$CVM_COMP_OBJS_RSRC_ID_PART
+	local rsrc_dir="$CVM_COMP_INSTALL_BUILD_DIR_NAME"
 	OSL_RSRC_check "$rsrc_dir" "$rsrc_id"
 	if [[ $? -eq 0 ]]; then
 		## rsrc is already OK' nothing to do
@@ -583,10 +724,23 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_built()
 	if [[ $return_code -ne 0 ]]; then
 		return 1
 	fi
+
 	
+	CVM_COMPONENT_find_known_component_dir $component_id
+	if [[ $? -ne 0 ]]; then
+		## an error message was already displayed
+		return 1
+	fi
+	local component_definition_dir="$return_value"
+
+
+
 	## now we can build
+	local OSlmomd_bkp=$OSL_STAMP_last_managed_operation_modif_date
 	OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id"
 
+
+		
 	CVM_COMP_INSTALL_get_value_from_cached_component_for "build_mode"
 	return_code=1 # error/not exist by default
 	case $return_value in
@@ -598,6 +752,62 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_built()
 		cd "$build_dir"
 		make
 		return_code=$?
+		## back to prev dir
+		cd "$prev_wd"
+		;;
+	### used by boost
+	"bjam")
+		local prev_wd=$(pwd)
+		local build_dir="$(pwd)/$(CVM_COMPONENT_get_component_build_dir $component_version)"
+		build_dir=$(readlink -f "$build_dir")
+		local prefix="$(pwd)/$(CVM_COMPONENT_get_component_prefix "$component_version")"
+		prefix=$(readlink -f "$prefix")
+		cd "$build_dir"
+		echo "* configuring bjam... (prefix : $prefix)"
+		## is this standard or boost-specific ?
+		./bootstrap.sh --with-libraries=all --prefix="$prefix"
+		return_code=$?
+		if [[ $return_code -ne 0 ]]; then
+			OSL_OUTPUT_display_error_message "boost configuration failed"
+		else
+			# the --layout option is very important for Wt cmake to find the correct boost libs
+			# hat tip : http://stackoverflow.com/a/6354570/587407
+			echo "* compiling via bjam (build-dir : $build_dir)"
+			./b2 install --layout=tagged --without-mpi --prefix="$prefix" --build-dir="$build_dir"
+			return_code=$?
+		fi
+		## back to prev dir
+		cd "$prev_wd"
+		;;
+	### the grand classic
+	autotools)
+		## TODO
+		OSL_OUTPUT_display_error_message "autotools NIMP"
+		## return_code stays NOK
+		;;
+	### other inhabitual ways
+	custom)
+		local prev_wd=$(pwd)
+		local build_dir="$(pwd)/$(CVM_COMPONENT_get_component_build_dir $component_version)"
+		build_dir=$(readlink -f "$build_dir")
+		local prefix="$(pwd)/$(CVM_COMPONENT_get_component_prefix "$component_version")"
+		prefix=$(readlink -f "$prefix")
+		cd "$build_dir"
+		echo "* preparing custom... (prefix : $prefix) (build-dir : $build_dir)"
+		CVM_COMP_INSTALL_get_value_from_cached_component_for "custom_build_script"
+		local custom_build_script="$component_definition_dir/$return_value"
+		if [[ -z "$return_value" ]]; then
+			## no custom script -> can't do anything !
+			OSL_OUTPUT_display_error_message "build script could not be read..."
+		elif ! [[ -f "$custom_build_script" ]]; then
+			OSL_OUTPUT_display_error_message "build script could not be found at $custom_build_script"
+		else
+			"$custom_build_script" "$prefix" ""
+			return_code=$?
+			if [[ $return_code -ne 0 ]]; then
+				OSL_OUTPUT_display_error_message "build script failed"
+			fi
+		fi
 		## back to prev dir
 		cd "$prev_wd"
 		;;
@@ -622,63 +832,10 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_built()
 			return_code=1 # error
 		fi
 	fi
+	OSL_STAMP_last_managed_operation_modif_date=$OSlmomd_bkp
 
 	if [[ $? -ne 0 ]]; then
 		OSL_OUTPUT_display_error_message "error while building component \"$component_version\"..."
-	fi
-	
-	return $return_code
-}
-
-
-CVM_COMP_INSTALL_ensure_loaded_component_src_are_available()
-{
-	local component_id=$1
-	local component_version=$2
-	local return_code=1 # error/not exist by default
-	
-	CVM_debug "* ensuring that component \"$component_version\" src are available..."
-
-	## chek rsrc
-	local rsrc_id=$component_version.$CVM_COMP_SRC_RSRC_ID_PART
-	local rsrc_dir="$CVM_COMP_INSTALL_FINAL_DIR_NAME/build"
-	OSL_RSRC_check "$rsrc_dir" "$rsrc_id"
-	if [[ $? -eq 0 ]]; then
-		## rsrc is already OK' nothing to do
-		CVM_debug "  -> this rsrc is already available."
-		return 0
-	fi
-
-	## in any case, we need shared src
-	CVM_COMP_INSTALL_ensure_loaded_component_shared_src_are_available "$component_id" "$component_version"
-	return_code=$?
-	if [[ $return_code -ne 0 ]]; then
-		return 1
-	fi
-
-	OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id"
-
-	## do we have "in source build" or "out of source build" ?
-	CVM_COMP_INSTALL_compute_loaded_component_build_src_dir "$component_id" "$component_version"
-	return_code=$?
-	if [[ $return_code -ne 0 ]]; then
-		return 1
-	fi
-	local build_src_dir=$return_value
-	local oos_src_dir="$(CVM_COMPONENT_get_component_shared_src_dir $component_version)"
-	if [[ "$build_src_dir" == "$oos_src_dir" ]]; then
-		## OOS build
-		## do nothing
-		return_code=0
-	else
-		## IS build
-		## we make a full copy of the source
-		cp -r "$oos_src_dir" "$build_src_dir"
-		return_code=$?
-	fi
-
-	if [[ $? -ne 0 ]]; then
-		OSL_OUTPUT_display_error_message "error while making component \"$component_version\" src are available !"
 	fi
 	
 	return $return_code
@@ -743,6 +900,73 @@ CVM_COMP_INSTALL_compute_loaded_component_build_src_dir()
 }
 
 
+CVM_COMP_INSTALL_ensure_loaded_component_src_are_available()
+{
+	local component_id=$1
+	local component_version=$2
+	local return_code=1 # error/not exist by default
+	
+	CVM_debug "* ensuring that component \"$component_version\" src are available..."
+
+	## chek rsrc
+	local rsrc_id=$component_version.$CVM_COMP_SRC_RSRC_ID_PART
+	local rsrc_dir="$CVM_COMP_INSTALL_BUILD_DIR_NAME"
+	OSL_RSRC_check "$rsrc_dir" "$rsrc_id"
+	if [[ $? -eq 0 ]]; then
+		## rsrc is already OK' nothing to do
+		CVM_debug "  -> this rsrc is already available."
+		return 0
+	fi
+
+	## in any case, we need shared src
+	CVM_COMP_INSTALL_ensure_loaded_component_shared_src_are_available "$component_id" "$component_version"
+	return_code=$?
+	if [[ $return_code -ne 0 ]]; then
+		return 1
+	fi
+
+	local OSlmomd_bkp=$OSL_STAMP_last_managed_operation_modif_date
+	OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id"
+
+	## do we have "in source build" or "out of source build" ?
+	CVM_COMP_INSTALL_compute_loaded_component_build_src_dir "$component_id" "$component_version"
+	return_code=$?
+	if [[ $return_code -ne 0 ]]; then
+		return 1
+	fi
+	local build_src_dir=$return_value
+	local oos_src_dir="$(CVM_COMPONENT_get_component_shared_src_dir $component_version)"
+	if [[ "$build_src_dir" == "$oos_src_dir" ]]; then
+		## OOS build
+		## do nothing
+		return_code=0
+	else
+		## IS build
+		## we make a full copy of the source
+		CVM_debug "* copying src for in-source build..."
+		cp -r "$oos_src_dir" "$build_src_dir"
+		return_code=$?
+	fi
+
+	if [[ $return_code -ne 0 ]]; then
+		OSL_RSRC_end_managed_write_operation_with_error "$rsrc_dir" "$rsrc_id"
+	else
+		OSL_RSRC_end_managed_write_operation "$rsrc_dir" "$rsrc_id"
+		if [[ $? -ne 0 ]]; then
+			OSL_OUTPUT_display_error_message "Concurrent access to \"$component_version\" !"
+			return_code=1 # error
+		fi
+	fi
+	OSL_STAMP_last_managed_operation_modif_date=$OSlmomd_bkp
+
+	if [[ $? -ne 0 ]]; then
+		OSL_OUTPUT_display_error_message "error while making component \"$component_version\" src available !"
+	fi
+	
+	return $return_code
+}
+
+
 CVM_COMP_INSTALL_ensure_loaded_component_shared_src_are_available()
 {
 	local component_id=$1
@@ -762,6 +986,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_shared_src_are_available()
 	fi
 
 
+	local OSlmomd_bkp=$OSL_STAMP_last_managed_operation_modif_date
 	OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id"
 	
 	## how do we get the src ??
@@ -789,7 +1014,11 @@ CVM_COMP_INSTALL_ensure_loaded_component_shared_src_are_available()
 			local unexpected_archive_unpack_dir="$return_value"
 			## note : don't care if none set, then will be ignored
 			
-			OSL_ARCHIVE_unpack_to "$(CVM_COMPONENT_get_component_shared_archive_path $component_version)" "$(CVM_COMPONENT_get_component_shared_src_dir $component_version)" "$unexpected_archive_unpack_dir"
+			## cleanup possible existing bad dir
+			local dest_dir=$(CVM_COMPONENT_get_component_shared_src_dir $component_version)
+			rm -rf "$dest_dir"
+			
+			OSL_ARCHIVE_unpack_to "$(CVM_COMPONENT_get_component_shared_archive_path $component_version)" "$dest_dir" "$unexpected_archive_unpack_dir"
 			return_code=$?
 		fi
 		;;
@@ -820,6 +1049,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_shared_src_are_available()
 			return_code=1 # error
 		fi
 	fi
+	OSL_STAMP_last_managed_operation_modif_date=$OSlmomd_bkp
 
 	return $return_code
 }
@@ -843,7 +1073,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_shared_archive_is_available()
 		return 0
 	fi
 
-
+	local OSlmomd_bkp=$OSL_STAMP_last_managed_operation_modif_date
 	OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id"
 	
 	## how do we get the archive ??
@@ -852,8 +1082,32 @@ CVM_COMP_INSTALL_ensure_loaded_component_shared_archive_is_available()
 	case $return_value in
 	### from the web
 	"download")
-		OSL_OUTPUT_warn_not_implemented "download"
-		return_code=1 # error
+		CVM_COMP_INSTALL_get_value_from_cached_component_for "archive_download_url"
+		if [[ $? -ne 0 ]]; then
+			OSL_OUTPUT_display_error_message "Can't read URL of given component archive..."
+		else
+			local archive_url=$return_value
+			local download_dir="$CVM_ARCHIVES_DIR/$component_version"
+			mkdir -p "$download_dir"
+			local prev_wd=$(pwd)
+			cd "$download_dir"
+			CVM_COMP_INSTALL_get_value_from_cached_component_for "archive_download_target"
+			if [[ $? -ne 0 ]]; then
+				## direct download
+				wget "$archive_url"
+			else
+				## download to an explicitely specified file
+				wget "$archive_url" --output-document="$return_value"
+			fi
+			return_code=$?
+			## immediate error msg for clarity
+			if [[ $return_code -ne 0 ]]; then
+				OSL_OUTPUT_display_error_message "Download failed from : $archive_url"
+			fi
+			
+			## back to prev dir
+			cd "$prev_wd"
+		fi
 		;;
 	### directly from a path
 	"path")
@@ -885,7 +1139,6 @@ CVM_COMP_INSTALL_ensure_loaded_component_shared_archive_is_available()
 
 	if [[ $return_code -ne 0 ]]; then
 		OSL_RSRC_end_managed_write_operation_with_error "$rsrc_dir" "$rsrc_id"
-		OSL_OUTPUT_display_error_message "Can't find given component archive path : $archive_path"
 	else
 		OSL_RSRC_end_managed_write_operation "$rsrc_dir" "$rsrc_id"
 		if [[ $? -ne 0 ]]; then
@@ -893,6 +1146,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_shared_archive_is_available()
 			return_code=1 # error
 		fi
 	fi
+	OSL_STAMP_last_managed_operation_modif_date=$OSlmomd_bkp
 
 	if [[ $return_code -ne 0 ]]; then
 		OSL_OUTPUT_display_error_message "couldn't obtain component \"$component_version\" archive..."

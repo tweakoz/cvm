@@ -58,9 +58,13 @@ CVM_COMP_SELECTION_find_best_matching_component()
 	local exact_version_required=$5
 	local return_code=1 # error by default
 
+	## note : "system" and "stub" are synonymous
+	if [[ $exact_version_required == "system" ]]; then
+		exact_version_required="stub"
+	fi
+	
 	CVM_debug "looking for best matching component for \"$component_id\" with version reqs >= $min_version_authorized < $max_version_authorized =$exact_version_required..."
 
-	## for now, just forward to previous
 	CVM_COMPONENT_find_component_dir $component_id "integrated"
 	return_code=$?
 	
