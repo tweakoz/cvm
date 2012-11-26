@@ -32,6 +32,21 @@ CVM_COMPSET_get_compset_compfile()
 }
 
 
+CVM_COMPSET_update_environment_vars_with_current_compset()
+{
+	CVM_debug "updating env for current component set..."
+	CVM_debug "PATH b.            = $PATH"
+	CVM_debug "LD_LIBRARY_PATH b. = $LD_LIBRARY_PATH"
+	local env_file=$(CVM_COMPSET_get_compset_dir "$CURRENT_COMPSET")/$CVM_COMP_INSTALL_FINAL_DIR_NAME/$CVM_DEFAULT_ENV_FILE_NAME
+	CVM_debug "rourcing $env_file..."
+	source "$env_file"
+	CVM_debug "PATH a.            = $PATH"
+	CVM_debug "LD_LIBRARY_PATH a. = $LD_LIBRARY_PATH"
+	
+	return 0
+}
+
+
 CVM_COMPSET_check_compset()
 {
 	local compset_name=$1
@@ -133,9 +148,9 @@ CVM_COMPSET_create_compset()
 
 	if [[ $return_code -ne 0 ]]; then
 		## failure...
-		echo "XXX Component set \"$compset_name\" could not be created..."
+		OSL_OUTPUT_display_error_message "Component set \"$compset_name\" could not be created..."
 	else
-		echo "Component set \"$compset_name\" created successfully."
+		CVM_debug "Component set \"$compset_name\" created successfully."
 	fi
 	
 	return $return_code
@@ -156,7 +171,7 @@ CVM_COMPSET_save_current_active_compset()
 		echo "$compset_name" > "$CVM_ACTIVE_COMPSET"
 	else
 		## doesn't exist !
-		echo "XXX component set \"$compset_name\" doesn't exist !"
+		OSL_OUTPUT_display_error_message "component set \"$compset_name\" doesn't exist !"
 	fi
 }
 
@@ -190,7 +205,7 @@ CVM_COMPSET_ensure_default_compset()
 		fi
 	else
 		## doesn't exist !
-		echo "XXX Default component set \"$compset_name\" counldn't be created !"
+		OSL_OUTPUT_display_error_message "Default component set \"$compset_name\" counldn't be created !"
 	fi
 }
 

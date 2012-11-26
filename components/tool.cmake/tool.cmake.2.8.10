@@ -12,8 +12,8 @@ custom_build_script             custom_build.2.8.10.sh
 post_build_install_mode         do_nothing
 src_obtention_mode              archive
 
-archive_obtention_mode          path
-archive_path                    /Home/ut1kab/xp/cmake-2.8.10.1.tar.gz
+#archive_obtention_mode          path
+#archive_path                    /Home/ut1kab/xp/cmake-2.8.10.1.tar.gz
 
 archive_obtention_mode          download
 archive_download_url            http://www.cmake.org/files/v2.8/cmake-2.8.10.1.tar.gz

@@ -11,4 +11,4 @@ echo "Hello from true config.example"
 
 ## Default working dir is in  ~/.c++vm
 ## We can redefine it (only the config file will stay in .c++vm)
-CVM_DATA_DIR=/srv/dev/misc/c++vm_data
+CVM_DATA_DIR=/srv/dev/misc/cvm_data

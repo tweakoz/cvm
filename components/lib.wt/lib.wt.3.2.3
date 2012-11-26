@@ -8,7 +8,19 @@ require lib.boost, version : 1.41+
 require tool.cmake, version : 2.6+
 
 ## installation instructions :
-install_mode cmake
+install_mode                    build
+build_mode                      cmake
+src_obtention_mode              archive
 
-http://stackoverflow.com/questions/3790671/how-to-in-git-clone-a-remote-github-repository-from-a-specifed-date
+#archive_obtention_mode          path
+#archive_path                    /Home/ut1kab/xp/boost_1_51_0.tar.bz2
 
+archive_obtention_mode          download
+archive_download_url            http://prdownloads.sourceforge.net/witty/wt-3.2.3.tar.gz?download
+archive_download_target         wt-3.2.3.tar.gz
+unexpected_archive_unpack_dir   wt-3.2.3
+
+#http://stackoverflow.com/questions/3790671/how-to-in-git-clone-a-remote-github-repository-from-a-specifed-date
+#ommit 86f52cb0e04d4c879017f77a4b457348993a2fde
+#Author: Koen Deforche <koen@emweb.be>
+#Date:   Thu Sep 13 08:41:03 2012 +0200

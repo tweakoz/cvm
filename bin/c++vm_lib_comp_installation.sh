@@ -49,6 +49,9 @@ CVM_COMP_INSTALL_upgrade_compset()
 #	mkdir -p $CVM_COMP_INSTALL_FINAL_DIR_NAME/bin
 #	mkdir -p $CVM_COMP_INSTALL_FINAL_DIR_NAME/lib
 	
+	## take up to where we were
+	CVM_COMPSET_update_environment_vars_with_current_compset
+	
 	## start with root component
 	CVM_COMP_INSTALL_parse_compselfile_for_component $CVM_ROOT_COMPONENT_NAME
 	return_code=$?
@@ -347,6 +350,9 @@ CVM_COMP_INSTALL_collect_env_infos_for_freshly_installed_component()
 		echo "OSL_PATHVAR_prepend_to_PLV_if_not_already_there  PATH            \"$bin_dir\"" >> "$env_file"
 	fi
 
+	## apply what we just updated
+	CVM_COMPSET_update_environment_vars_with_current_compset
+	
 	return_code=0
 	
 	return $return_code
@@ -755,6 +761,37 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_built()
 		## back to prev dir
 		cd "$prev_wd"
 		;;
+	### the great cmake
+	"cmake")
+		## let's do it
+		## XXX hack
+		## TODO improve !!!!
+		if [[ -z "$BOOST_ROOT" ]]; then
+			OSL_EXIT_abort_execution_with_message "please set BOOST_ROOT $(pwd)/$(CVM_COMPONENT_get_component_prefix $component_version)"
+		fi
+		export BOOST_INCLUDEDIR=$BOOST_ROOT/include
+		export BOOST_LIBRARYDIR=$BOOST_ROOT/lib
+		## XXX hack
+		local prev_wd=$(pwd)
+		local build_dir="$(CVM_COMPONENT_get_component_build_dir $component_version)"
+		rm -rf "$build_dir"
+		mkdir "$build_dir"
+		local prefix="$(pwd)/$(CVM_COMPONENT_get_component_prefix $component_version)"
+		prefix=$(readlink -f "$prefix")
+		cd "$build_dir"
+		CVM_COMP_INSTALL_compute_loaded_component_build_src_dir $component_id $component_version
+		local src_dir=$return_value
+		#pwd
+		#echo "cmake -Wdev $src_dir -DCMAKE_INSTALL_PREFIX:PATH=$prefix"
+		echo "BOOST_ROOT=$BOOST_ROOT"
+		#ls
+		cmake --version
+		cmake -Wdev "$src_dir" -DCMAKE_INSTALL_PREFIX:PATH="$prefix"
+		make
+		return_code=$?
+		## back to prev dir
+		cd "$prev_wd"
+		;;
 	### used by boost
 	"bjam")
 		local prev_wd=$(pwd)
@@ -894,7 +931,7 @@ CVM_COMP_INSTALL_compute_loaded_component_build_src_dir()
 		;;
 	esac
 	
-	CVM_debug "* component \"$component_version\" build dir is : $return_value"
+	CVM_debug "* component \"$component_version\" src dir for build is : $return_value"
 
 	return $return_code
 }
@@ -939,6 +976,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_src_are_available()
 	if [[ "$build_src_dir" == "$oos_src_dir" ]]; then
 		## OOS build
 		## do nothing
+		#CVM_debug "* out-of source build..."
 		return_code=0
 	else
 		## IS build
@@ -947,7 +985,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_src_are_available()
 		cp -r "$oos_src_dir" "$build_src_dir"
 		return_code=$?
 	fi
-
+	
 	if [[ $return_code -ne 0 ]]; then
 		OSL_RSRC_end_managed_write_operation_with_error "$rsrc_dir" "$rsrc_id"
 	else

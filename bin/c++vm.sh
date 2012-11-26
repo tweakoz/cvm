@@ -5,6 +5,7 @@
 
 
 ## We use the OSL shell lib
+OSL_debug=true
 source osl_lib_init.sh
 source osl_lib_debug.sh
 source osl_lib_output.sh
@@ -14,6 +15,7 @@ source osl_lib_version.sh
 source osl_lib_exit.sh
 source osl_lib_capabilities.sh
 source osl_lib_archive.sh
+source osl_lib_pathvar.sh
 
 ## Now load our config
 source c++vm_inc_env.sh

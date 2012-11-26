@@ -78,6 +78,13 @@ if [[ ! -d "$CVM_DATA_DIR" ]]; then
 	exit 1
 fi
 
+## a dir where we'll do unclean stuff
+## like uncompressing
+if [[ -z "$CVM_TEMP_DIR" ]]; then
+	CVM_TEMP_DIR=$CVM_DATA_DIR/temp
+fi
+OSL_INIT_ensure_dir $CVM_TEMP_DIR
+
 ## a dir where we'll cache stuff.
 ## Stuff in this dir can be redownloaded / regenerated
 ## and is safe to delete.
