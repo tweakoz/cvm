@@ -341,15 +341,25 @@ CVM_COMP_INSTALL_collect_env_infos_for_freshly_installed_component()
 	lib_dir=$(readlink -f "$lib_dir")
 	local bin_dir=$(CVM_COMPONENT_get_component_bin_dir "$component_version")
 	bin_dir=$(readlink -f "$bin_dir")
-
+	local inc_dir=$(CVM_COMPONENT_get_component_include_dir "$component_version")
+	inc_dir=$(readlink -f "$inc_dir")
+	
 	if [[ -d "$lib_dir" ]]; then
 		echo "OSL_PATHVAR_prepend_to_PLV_if_not_already_there  LD_LIBRARY_PATH \"$lib_dir\"" >> "$env_file"
+		echo "OSL_PATHVAR_prepend_to_PLV_if_not_already_there  CMAKE_LIBRARY_PATH \"$lib_dir\"" >> "$env_file"
 	fi
 
 	if [[ -d "$bin_dir" ]]; then
 		echo "OSL_PATHVAR_prepend_to_PLV_if_not_already_there  PATH            \"$bin_dir\"" >> "$env_file"
 	fi
 
+	if [[ -d "$inc_dir" ]]; then
+		echo "OSL_PATHVAR_prepend_to_PLV_if_not_already_there  INCLUDE_PATH    \"$inc_dir\"" >> "$env_file"
+		echo "OSL_PATHVAR_prepend_to_PLV_if_not_already_there  CMAKE_INCLUDE_PATH    \"$inc_dir\"" >> "$env_file"
+	fi
+
+	##CMAKE_PREFIX_PATH
+	
 	## apply what we just updated
 	CVM_COMPSET_update_environment_vars_with_current_compset
 	
