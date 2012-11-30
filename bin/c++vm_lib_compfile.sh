@@ -4,7 +4,7 @@
 ## by Offirmo, https://github.com/Offirmo/cvm
 ##
 ## This file defines :
-##   the parsing of compfiles
+##   the parsing of compfiles, especially the root one
 ##
 ## This file is not meant to be executed, only sourced :
 ##   source c++vm_lib_compfile.sh
@@ -75,6 +75,7 @@ CVM_COMPFILE_update_compset()
 	return $return_code
 }
 
+
 CVM_COMPFILE_parse_compfile()
 {
 	local compfile_path=$1
@@ -138,6 +139,7 @@ CVM_COMPFILE_parse_compfile()
 
 	return $return_code
 }
+
 
 CVM_COMPFILE_parse_compfile_line()
 {
@@ -236,6 +238,7 @@ CVM_COMPFILE_process_line_minimum_required_version()
 	return $return_code
 }
 
+
 CVM_COMPFILE_process_line_language()
 {
 	local line_data=$1
@@ -249,6 +252,7 @@ CVM_COMPFILE_process_line_language()
 	return $return_code
 }
 
+
 CVM_COMPFILE_process_line_include()
 {
 	local line_data=$1
@@ -258,22 +262,6 @@ CVM_COMPFILE_process_line_include()
 	
 	OSL_OUTPUT_warn_not_implemented "include"
 	#return_code=$?
-	
-	return $return_code
-}
-
-CVM_COMPFILE_process_line_stub()
-{
-	xxx deprecated
-	
-	local line_data=$1
-	local return_code=1 # error by default
-	
-	CVM_debug "processing compfile cmd stub..."
-	
-	## add the requirement to the current component if needed
-	CVM_COMP_SELECTION_add_component_stub_info_if_needed  $CVM_COMPFILE_current_component
-	return_code=$?
 	
 	return $return_code
 }
@@ -329,18 +317,7 @@ CVM_COMPFILE_process_line_require()
 			else
 				CVM_debug "parsing require option ($key, $value)"
 				case $key in
-				"stub")
-					## XXX TO IMPROVE
-					CVM_COMPFILE_process_explicit_version_requirement "stub" $exact_version_required
-					return_code=$?
-					if [[ $return_code -ne 0 ]]; then
-						## an error msg should have been displayed
-						break
-					else
-						exact_version_required=$return_value
-						CVM_debug "explicit required version is now : \"$exact_version_required\"."
-					fi
-					;;
+				## explicit version requirement
 				"version")
 					CVM_COMPFILE_process_generic_version_requirement "$value" "$min_version_authorized" "$max_version_authorized" "$exact_version_required"
 					return_code=$?
@@ -355,7 +332,29 @@ CVM_COMPFILE_process_line_require()
 						exact_version_required=$return_value
 						return_code=0 ## OK again
 					else
-						OSL_OUTPUT_display_error_message "could'nt understand version requirement : $value"
+						OSL_OUTPUT_display_error_message "couldn't understand version requirement : $value"
+						return_code=1 ## error
+						break
+					fi
+					;;
+				## add a dependency not enabled by default
+				"require")
+					CVM_COMPFILE_process_additional_dependency "$value"
+					return_code=$?
+					#CVM_debug "rv $return_code"
+					if [[ $return_code -ne 0 ]]; then
+						OSL_OUTPUT_display_error_message "couldn't understand dependency : $value"
+						return_code=1 ## error
+						break
+					fi
+					;;
+				## shortcut to avoid download
+				"archive_path")
+					CVM_COMPFILE_process_archive_path "$component_id" "$value"
+					return_code=$?
+					#CVM_debug "rv $return_code"
+					if [[ $return_code -ne 0 ]]; then
+						OSL_OUTPUT_display_error_message "couldn't understand archive path : $value"
 						return_code=1 ## error
 						break
 					fi
@@ -377,18 +376,63 @@ CVM_COMPFILE_process_line_require()
 		
 		## add the required component if needed
 		CVM_COMP_SELECTION_add_if_needed $component_id
-		local comp_just_created=$?
-		if [[ $comp_just_created -eq 1 ]]; then
+		CVM_COMP_SELECTION_test_if_already_selected $component_id
+		if [[ $? -ne 0 ]]; then
 			## add required component own deps
 			## this is complex, offload it
 			CVM_COMP_SELECTION_select_component $component_id "$component_source" "$min_version_authorized" "$max_version_authorized" "$exact_version_required"
 			return_code=$?
 		else
-			return_code=0 ## all is fine
+			return_code=0 ## everything is fine
 		fi
 		
 	fi ## param OK
 	OSL_INIT_restore_default_IFS
+
+	return $return_code
+}
+
+
+CVM_COMPFILE_process_archive_path()
+{
+	local component_id=$1
+	local path_info=$2
+	local return_code=1
+
+	CVM_debug "CVM_COMPFILE_process_archive_path $component_id -> $path_info"
+
+	## add the required component if needed
+	CVM_COMP_SELECTION_add_if_needed "$component_id"
+
+	## add the needed infos
+	local line=""
+	line="src_obtention_mode       archive"
+	CVM_COMP_SELECTION_add_component_info_if_needed  "$component_id"  "$line"
+	line="archive_obtention_mode   path"
+	CVM_COMP_SELECTION_add_component_info_if_needed  "$component_id"  "$line"
+	line="archive_path             $path_info"
+	CVM_COMP_SELECTION_add_component_info_if_needed  "$component_id"  "$line"
+	return_code=$?
+
+	return $return_code
+}
+
+
+CVM_COMPFILE_process_additional_dependency()
+{
+	local dependency_info=$1
+	local return_code=1
+
+	CVM_debug "CVM_COMPFILE_process_additional_dependency $component_id -> $dependency_info"
+
+	## add the required component if needed
+	CVM_COMP_SELECTION_add_if_needed "$component_id"
+
+	## add the needed infos
+	local line="require $dependency_info"
+	CVM_COMP_SELECTION_add_component_info_if_needed  "$component_id"  "$line"
+	
+	return_code=$?
 
 	return $return_code
 }
@@ -400,7 +444,7 @@ CVM_COMPFILE_process_generic_version_requirement()
 	local min_version_authorized=$2
 	local max_version_authorized=$3
 	local exact_version_required=$4
-	local return_code=1 # error by default (FOR THIS FUNC, SPECIAL MEANING)
+	local return_code=1 # error by default (XXX FOR THIS FUNC, SPECIAL MEANING)
 	return_value="error" # error by default
 
 	CVM_debug "CVM_COMPFILE_process_generic_version_requirement \"$version_requirement\" with $min_version_authorized/$exact_version_required/$max_version_authorized..."

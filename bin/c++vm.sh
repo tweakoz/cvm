@@ -5,7 +5,7 @@
 
 
 ## We use the OSL shell lib
-OSL_debug=true
+#OSL_debug_activated=true
 source osl_lib_init.sh
 source osl_lib_debug.sh
 source osl_lib_output.sh
@@ -16,6 +16,7 @@ source osl_lib_exit.sh
 source osl_lib_capabilities.sh
 source osl_lib_archive.sh
 source osl_lib_pathvar.sh
+source osl_lib_file.sh
 
 ## Now load our config
 source c++vm_inc_env.sh
@@ -39,13 +40,18 @@ usage()
 	echo ""
 	echo "Usage : c++vm <command> ..."
 	echo "Commands :"
-	echo "  help"
-	echo "  status"
-	echo "  list"
-	echo "  new <name>"
-	echo "  use [name]"
-	echo "  update"
-	echo "  set_compfile [compfile]"
+	echo "- generic :"
+	echo "    help"
+	echo "    status"
+	echo "- component sets management :"
+	echo "    list"
+	echo "    new <name>"
+	echo "    use <name>"
+	echo "    delete <name>"
+	echo "- current component set management :"
+	echo "    set_compfile [compfile]"
+	echo "    update"
+	echo "    upgrade"
 	echo "..."
 	exit 1
 }
@@ -70,7 +76,7 @@ ensure_param2()
 	if [[ -z "$PARAM2" ]]; then
 		## no param2.
 		## It was expected.
-		OSL_OUTPUT_display_error_message "XXX a second param was expected."
+		OSL_OUTPUT_display_error_message "A second param was expected."
 		usage # REM : will exit
 	fi
 }
@@ -101,31 +107,43 @@ exec_cmd_list()
 exec_cmd_create_new_compset()
 {
 	ensure_param2_as_compset
-	echo "* creating component set \"$PARAM_COMPSET\"..."
+	echo "* Creating component set \"$PARAM_COMPSET\"..."
 	CVM_COMPSET_create_compset_if_needed $PARAM_COMPSET
+	echo "* ...done."
 }
 exec_cmd_use_existing_compset()
 {
 	ensure_param2_as_compset
-	echo "* making component set \"$PARAM_COMPSET\" default..."
+	echo "* Making component set \"$PARAM_COMPSET\" default..."
 	CVM_COMPSET_save_current_active_compset $PARAM_COMPSET
+	echo "* ...done."
+}
+exec_cmd_delete_compset()
+{
+	ensure_param2_as_compset
+	echo "* Deleting component set \"$PARAM_COMPSET\"..."
+	CVM_COMPSET_delete_compset $PARAM_COMPSET
+	echo "* ...done."
 }
 exec_cmd_update_current_compset()
 {
-	echo "* updating component set \"$CURRENT_COMPSET\"..."
+	echo "* Updating component set \"$CURRENT_COMPSET\"..."
 	CVM_COMPFILE_update_compset $CURRENT_COMPSET
+	echo "* ...done."
 }
 exec_cmd_upgrade_current_compset()
 {
-	echo "* upgrading component set \"$CURRENT_COMPSET\"..."
+	echo "* Upgrading component set \"$CURRENT_COMPSET\"..."
 	CVM_COMP_INSTALL_upgrade_compset $CURRENT_COMPSET
+	echo "* ...done."
 }
 exec_cmd_process_compfile_to_current_compset()
 {
 	## todo check params
 	local compfile_path=$CVM_DEFAULT_COMPFILE_NAME
-	echo "* Setting component file \"$compfile_path\" to component set \"$CURRENT_COMPSET\"..."
+	echo "* Applying component file \"$compfile_path\" to component set \"$CURRENT_COMPSET\"..."
 	CVM_COMPFILE_set  $compfile_path  $CURRENT_COMPSET
+	echo "* ...done."
 	
 	exec_cmd_update_current_compset
 }
@@ -160,6 +178,10 @@ case $CMD in
 ### use a specific component set
 "use")
 	exec_cmd_use_existing_compset
+	;;
+### delete a component set
+"delete")
+	exec_cmd_delete_compset
 	;;
 ### update=reparse current component set
 "update")

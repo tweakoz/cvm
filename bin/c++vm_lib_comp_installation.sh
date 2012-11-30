@@ -35,7 +35,7 @@ CVM_COMP_INSTALL_upgrade_compset()
 	local rsrc_id="components_installation"
 	local rsrc_dir=.
 	OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id"
-
+	
 	## XXX make more subtile
 	#rm -rf $CVM_COMP_INSTALL_FINAL_DIR_NAME
 	#echo "" > "$CVM_COMP_INSTALL_FINAL_DIR_NAME/$CVM_DEFAULT_ENV_FILE_NAME"
@@ -65,7 +65,7 @@ CVM_COMP_INSTALL_upgrade_compset()
 		## everything went OK
 		OSL_RSRC_end_managed_write_operation "$rsrc_dir" "$rsrc_id"
 		if [[ $? -ne 0 ]]; then
-			OSL_OUTPUT_display_error_message "Concurrent access to installed components !"
+			OSL_OUTPUT_display_error_message "Concurrent access to resource : $rsrc_id"
 			return_code=1 # error
 		fi
 	fi
@@ -131,19 +131,9 @@ CVM_COMP_INSTALL_parse_compselfile_line()
 		CVM_COMP_INSTALL_process_line_selected_version "$line_data"
 		return_code=$?
 		;;
-	### ...
-	"stub")
-		##CVM_COMPFILE_process_line_stub "$line_data"
-		##return_code=$?
-		OSL_OUTPUT_warn_not_implemented "stub"
-		return_code=1
-		## means that this file contains no more useful information
-		break ## we can stop here
-		;;
-	### ??? command not recognized
+	### command not recognized --> must be an installation instruction, ignore
 	*)
-		OSL_OUTPUT_warn "unrecognized component selection file command : \"$line_cmd\"..."
-		#return_code=1 ## error
+		do_nothing=1
 		;;
 	esac
 
@@ -167,7 +157,7 @@ CVM_COMP_INSTALL_process_line_selected_version()
 	#CVM_debug "0 : ${line_data_comma_splitted[0]}"
 	#CVM_debug "1 : ${line_data_comma_splitted[1]}"
 	#CVM_debug "2 : ${line_data_comma_splitted[2]}"
-
+	
 	## just check that there is at last one param
 	if [[ ${#line_data_comma_splitted[@]} -lt 1 ]]; then
 		OSL_OUTPUT_display_error_message "syntax error : selected_version cmd takes at last one parameter"
@@ -190,7 +180,7 @@ CVM_COMP_INSTALL_process_line_require()
 	local return_code=1 # error by default
 	
 	CVM_debug "processing comp selection file cmd require..."
-
+	
 	## to allow recursion since we have a state
 	local old_last_seen_selected_version=$CVM_COMP_INSTALL_last_seen_selected_version
 	
@@ -201,7 +191,7 @@ CVM_COMP_INSTALL_process_line_require()
 	#CVM_debug "0 : ${line_data_comma_splitted[0]}"
 	#CVM_debug "1 : ${line_data_comma_splitted[1]}"
 	#CVM_debug "2 : ${line_data_comma_splitted[2]}"
-
+	
 	## just check that there is at last one param
 	if [[ ${#line_data_comma_splitted[@]} -lt 1 ]]; then
 		OSL_OUTPUT_display_error_message "syntax error : require cmd takes at last one parameter"
@@ -226,7 +216,7 @@ CVM_COMP_INSTALL_ensure_component_installed()
 {
 	local component_id=$1
 	local return_code=1 # error/not exist by default
-
+	
 	CVM_debug "ensuring that component \"$component_id\" is fully installed..."
 	
 	## check if this component is already installed properly
@@ -248,6 +238,7 @@ CVM_COMP_INSTALL_ensure_component_installed()
 		## return code stays NOK
 	else
 		## then install the component itself
+		local OSlmomd_bkp=$OSL_STAMP_last_managed_operation_modif_date
 		OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id"
 		
 		CVM_debug "installing component : $component_id / $CVM_COMP_INSTALL_last_seen_selected_version"
@@ -281,10 +272,11 @@ CVM_COMP_INSTALL_ensure_component_installed()
 			OSL_OUTPUT_display_success_message "Install of $component_id done"
 			OSL_RSRC_end_managed_write_operation "$rsrc_dir" "$rsrc_id"
 			if [[ $? -ne 0 ]]; then
-				OSL_OUTPUT_display_error_message "Concurrent access to \"$component_version\" !"
+				OSL_OUTPUT_display_error_message "Concurrent access to resource : $rsrc_id"
 				return_code=1 # error
 			fi
 		fi
+		OSL_STAMP_last_managed_operation_modif_date=$OSlmomd_bkp
 	fi ## dependencies
 
 	if [[ $return_code -ne 0 ]]; then
@@ -303,26 +295,39 @@ CVM_COMP_INSTALL_load_component_data()
 	
 	CVM_debug "loading component data for $component_id..."
 
-	CVM_COMPONENT_find_known_component_dir $component_id
-	return_code=$?
-	
-	if [[ $return_code -ne 0 ]]; then
+	## reset data
+	CVM_COMP_INSTALL_current_component_data=""
+
+	## first parse compselfile for interesting data
+	## or overrides
+	local COMPSEL_FILE=$(CVM_COMP_SELECTION_get_compfile_for $component_id)
+	CVM_COMPFILE_parse_compfile "$COMPSEL_FILE" $component_id "CVM_COMP_INSTALL_parse_line_load_compfile_data"
+	if [[ $? -ne 0 ]]; then
 		## an error message was already displayed
-		do_nothing=1
-	else
-		local expected_compfile="$return_value/$component_version" 
-		if ! [[ -f "$expected_compfile" ]]; then
-			OSL_OUTPUT_display_error_message "required known component version \"$component_version\" couldn't be found... This should not happen ! (internal error)"
-			return_code=1 # error
-		else
-			return_code=1 # error/not exist by default
-			
-			## and start parsing, for default component
-			CVM_COMP_INSTALL_current_component_data=""
-			CVM_COMPFILE_parse_compfile "$expected_compfile" $component_id "CVM_COMP_INSTALL_parse_line_load_compfile_data"
-			return_code=$?
-		fi
+		exit 1
 	fi
+	
+	## then parse component own file
+	CVM_COMPONENT_find_known_component_dir $component_id
+	if [[ $? -ne 0 ]]; then
+		## an error message was already displayed
+		exit 1
+	fi
+	
+	local expected_compfile="$return_value/$component_version"
+	if ! [[ -f "$expected_compfile" ]]; then
+		OSL_OUTPUT_display_error_message "required known component version \"$component_version\" couldn't be found... This should not happen ! (internal error)"
+		return_code=1 # error
+	else
+		## and start parsing, for default component
+		CVM_COMPFILE_parse_compfile "$expected_compfile" $component_id "CVM_COMP_INSTALL_parse_line_load_compfile_data"
+		return_code=$?
+	fi
+
+	#echo "final component data :"
+	#echo "------"
+	#CVM_debug_multi $CVM_COMP_INSTALL_current_component_data
+	#echo "------"
 	
 	return $return_code
 }
@@ -572,7 +577,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_installed_via_apt()
 	else
 		OSL_RSRC_end_managed_write_operation "$rsrc_dir" "$rsrc_id"
 		if [[ $? -ne 0 ]]; then
-			OSL_OUTPUT_display_error_message "Concurrent access to \"$component_version\" !"
+			OSL_OUTPUT_display_error_message "Concurrent access to resource : $rsrc_id"
 			return_code=1 # error
 		fi
 	fi
@@ -628,9 +633,12 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_built_and_installed()
 	else
 		## try to infer it ourselves
 		CVM_COMP_INSTALL_get_value_from_cached_component_for "build_mode"
-		return_code=$?
-		case $return_value in
+		local build_mode=$return_value
+		case $build_mode in
 		"cmake")
+			install_mode="make_install"
+			;;
+		"autotools")
 			install_mode="make_install"
 			;;
 		"make")
@@ -667,25 +675,57 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_built_and_installed()
 		;;
 	"auto")
 		## this one is clever
-		## we will copy all .h and .a/.so in their expected dir
+		## we will copy all .h and .a/.so to their expected dir
 		local build_dir="$(CVM_COMPONENT_get_component_build_dir $component_version)"
-		
-		local include_dir="$(CVM_COMPONENT_get_component_include_dir $component_version)"
-		mkdir -p "$include_dir"
-		for file in `find -P "$build_dir" \( -name "*.h" -o -name "*.hxx" -o -name "*.hpp" -o -name "*.H" \) -type f`; do
-			#echo "$file"
-			cp "$file" "$include_dir"
-		done
-		
+
+		## first the libs
 		local lib_dir="$(CVM_COMPONENT_get_component_lib_dir $component_version)"
 		mkdir -p "$lib_dir"
 		for file in `find -P "$build_dir" \( -name "*.a" -o -name "*.so" \) -type f`; do
 			#echo "$file"
 			cp "$file" "$lib_dir"
 		done
-		
-		local bin_dir="$(CVM_COMPONENT_get_component_include_dir $component_version)"
-		mkdir -p "$bin_dir"
+
+		## then the headers
+		## sligtly more complicated because we must maintain dir structure
+		## or else #include "xxx/yyy.h" will not work
+		local include_dir="$(CVM_COMPONENT_get_component_include_dir $component_version)"
+		mkdir -p "$include_dir"
+		# 1st pass : find root dir
+		local header_found=0
+		local root_dir=""
+		for file in `find -P . \( -name "*.h" -o -name "*.hxx" -o -name "*.hpp" -o -name "*.H" -o -name "*.h++" \) -type f`; do
+			#echo "$file"
+			local dir=`dirname "$file"`
+			#CVM_debug "dir = $dir"
+			if [[ $header_found -eq 0 ]]; then
+				root_dir=$dir
+				#CVM_debug "include root dir is now : $root_dir"
+			else
+				OSL_FILE_find_common_path "$root_dir" "$dir"
+				root_dir=$return_value
+				#CVM_debug "include root dir is now : $root_dir"
+			fi
+			header_found=1
+		done
+		# 2nd pass : header copy with structure preseved
+		if [[ $header_found -ne 0 ]]; then
+			CVM_debug "include root dir = $root_dir"
+			for file in `find -P . \( -name "*.h" -o -name "*.hxx" -o -name "*.hpp" -o -name "*.H" -o -name "*.h++" \) -type f`; do
+				#echo "$file"
+				local dir=`dirname "$file"`
+				OSL_FILE_find_relative_path "$root_dir" "$dir"
+				local dst=$include_dir/$return_value/$(basename "$file")
+				CVM_debug "copying include file $file to $dst..."
+				mkdir -p `dirname "$dst"`
+				cp "$file" "$dst"
+				#cp "$file" "$include_dir"
+			done
+		fi
+		## back to prev dir
+
+		local bin_dir="$(CVM_COMPONENT_get_component_bin_dir $component_version)"
+		#mkdir -p "$bin_dir"
 
 		## I'm lazy...
 		return_code=0
@@ -702,7 +742,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_built_and_installed()
 	else
 		OSL_RSRC_end_managed_write_operation "$rsrc_dir" "$rsrc_id"
 		if [[ $? -ne 0 ]]; then
-			OSL_OUTPUT_display_error_message "Concurrent access to \"$component_version\" !"
+			OSL_OUTPUT_display_error_message "Concurrent access to resource : $rsrc_id"
 			return_code=1 # error
 		fi
 	fi
@@ -758,8 +798,9 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_built()
 
 		
 	CVM_COMP_INSTALL_get_value_from_cached_component_for "build_mode"
+	local build_mode=$return_value
 	return_code=1 # error/not exist by default
-	case $return_value in
+	case $build_mode in
 	### basic make
 	"make")
 		## let's do it
@@ -774,14 +815,6 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_built()
 	### the great cmake
 	"cmake")
 		## let's do it
-		## XXX hack
-		## TODO improve !!!!
-		if [[ -z "$BOOST_ROOT" ]]; then
-			OSL_EXIT_abort_execution_with_message "please set BOOST_ROOT $(pwd)/$(CVM_COMPONENT_get_component_prefix $component_version)"
-		fi
-		export BOOST_INCLUDEDIR=$BOOST_ROOT/include
-		export BOOST_LIBRARYDIR=$BOOST_ROOT/lib
-		## XXX hack
 		local prev_wd=$(pwd)
 		local build_dir="$(CVM_COMPONENT_get_component_build_dir $component_version)"
 		rm -rf "$build_dir"
@@ -827,13 +860,27 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_built()
 		cd "$prev_wd"
 		;;
 	### the grand classic
-	autotools)
-		## TODO
-		OSL_OUTPUT_display_error_message "autotools NIMP"
-		## return_code stays NOK
+	"autotools")
+		## let's do it
+		local prev_wd=$(pwd)
+		local prefix="$(pwd)/$(CVM_COMPONENT_get_component_prefix $component_version)"
+		prefix=$(readlink -f "$prefix")
+		local build_dir="$(CVM_COMPONENT_get_component_build_dir $component_version)"
+		cd "$build_dir"
+		CVM_debug "./configure --prefix=$prefix"
+		./configure --prefix="$prefix"
+		return_code=$?
+		if [[ $return_code -ne 0 ]]; then
+			OSL_OUTPUT_display_error_message "autotools configuration failed"
+		else
+			make
+			return_code=$?
+		fi
+		## back to prev dir
+		cd "$prev_wd"
 		;;
 	### other inhabitual ways
-	custom)
+	"custom")
 		local prev_wd=$(pwd)
 		local build_dir="$(pwd)/$(CVM_COMPONENT_get_component_build_dir $component_version)"
 		build_dir=$(readlink -f "$build_dir")
@@ -875,7 +922,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_built()
 	else
 		OSL_RSRC_end_managed_write_operation "$rsrc_dir" "$rsrc_id"
 		if [[ $? -ne 0 ]]; then
-			OSL_OUTPUT_display_error_message "Concurrent access to \"$component_version\" !"
+			OSL_OUTPUT_display_error_message "Concurrent access to resource : $rsrc_id"
 			return_code=1 # error
 		fi
 	fi
@@ -1001,7 +1048,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_src_are_available()
 	else
 		OSL_RSRC_end_managed_write_operation "$rsrc_dir" "$rsrc_id"
 		if [[ $? -ne 0 ]]; then
-			OSL_OUTPUT_display_error_message "Concurrent access to \"$component_version\" !"
+			OSL_OUTPUT_display_error_message "Concurrent access to resource : $rsrc_id"
 			return_code=1 # error
 		fi
 	fi
@@ -1093,7 +1140,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_shared_src_are_available()
 	else
 		OSL_RSRC_end_managed_write_operation "$rsrc_dir" "$rsrc_id"
 		if [[ $? -ne 0 ]]; then
-			OSL_OUTPUT_display_error_message "Concurrent access to \"$component_version\" !"
+			OSL_OUTPUT_display_error_message "Concurrent access to resource : $rsrc_id"
 			return_code=1 # error
 		fi
 	fi
@@ -1190,7 +1237,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_shared_archive_is_available()
 	else
 		OSL_RSRC_end_managed_write_operation "$rsrc_dir" "$rsrc_id"
 		if [[ $? -ne 0 ]]; then
-			OSL_OUTPUT_display_error_message "Concurrent access to \"$component_version\" !"
+			OSL_OUTPUT_display_error_message "Concurrent access to resource : $rsrc_id"
 			return_code=1 # error
 		fi
 	fi

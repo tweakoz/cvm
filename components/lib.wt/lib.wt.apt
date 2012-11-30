@@ -4,7 +4,6 @@
 ## requirements :
 ## (none -> handled by apt)
 
-
 ## installation instructions :
 install_mode apt
 apt_packets  witty witty-dbg witty-dev

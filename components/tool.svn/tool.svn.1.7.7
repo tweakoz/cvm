@@ -1,0 +1,27 @@
+## This file is a C++VM component definition
+## C++ Version Manager https://github.com/Offirmo/cvm
+
+## requirements :
+# cf. INSTALL file
+require compiler.gcc
+require tool.autoconf, version : 2.59+
+require lib.libtool,   version : 1.4+
+require lib.apr,       version : 1+
+require lib.apr-util
+require lib.neon,      version : 0.29.6+
+require lib.sqlite,    version : 3.6.18+
+require lib.serf
+
+
+## installation instructions :
+install_mode                    build
+build_mode                      autotools
+src_obtention_mode              archive
+
+#archive_obtention_mode          path
+#archive_path                    xxx
+
+archive_obtention_mode          download
+archive_download_url            http://subversion.tigris.org/downloads/subversion/subversion-1.7.7.tar.bz2
+archive_download_target         subversion-1.7.7.tar.bz2
+unexpected_archive_unpack_dir   subversion-1.7.7

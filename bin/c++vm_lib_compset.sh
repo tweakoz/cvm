@@ -35,13 +35,15 @@ CVM_COMPSET_get_compset_compfile()
 CVM_COMPSET_update_environment_vars_with_current_compset()
 {
 	CVM_debug "updating env for current component set..."
-	CVM_debug "PATH b.            = $PATH"
-	CVM_debug "LD_LIBRARY_PATH b. = $LD_LIBRARY_PATH"
 	local env_file=$(CVM_COMPSET_get_compset_dir "$CURRENT_COMPSET")/$CVM_COMP_INSTALL_FINAL_DIR_NAME/$CVM_DEFAULT_ENV_FILE_NAME
-	CVM_debug "rourcing $env_file..."
-	source "$env_file"
-	CVM_debug "PATH a.            = $PATH"
-	CVM_debug "LD_LIBRARY_PATH a. = $LD_LIBRARY_PATH"
+	if [[ -f "$env_file" ]]; then
+		CVM_debug "PATH b.            = $PATH"
+		CVM_debug "LD_LIBRARY_PATH b. = $LD_LIBRARY_PATH"
+		CVM_debug "sourcing $env_file..."
+		source "$env_file"
+		CVM_debug "PATH a.            = $PATH"
+		CVM_debug "LD_LIBRARY_PATH a. = $LD_LIBRARY_PATH"
+	fi
 	
 	return 0
 }
@@ -182,12 +184,32 @@ CVM_COMPSET_get_current_active_compset()
 }
 
 
+CVM_COMPSET_get_current_compset_dir()
+{
+	local compset_name=$(CVM_COMPSET_get_current_active_compset)
+	echo "$(CVM_COMPSET_get_compset_dir "$compset_name")"
+}
+
+
 CVM_COMPSET_delete_compset()
 {
 	local compset_name=$1
 	
-	CVM_debug "creating compset \"$compset_name\"..."
-	OSL_OUTPUT_abort_execution_because_not_implemented
+	CVM_debug "Deleting compset \"$compset_name\"..."
+
+	## remove files
+	rm -rf "$(CVM_COMPSET_get_compset_dir "$compset_name")"
+	
+	## clean rsrc lock
+	local rsrc_id=$compset_name
+	local rsrc_dir=$CVM_COMPSETS_DIR
+	OSL_RSRC_cleanup "$rsrc_dir" "$rsrc_id"
+
+	## ensure correct default compset
+	if [[ "$(CVM_COMPSET_get_current_active_compset)" == "$compset_name" ]]; then
+		CVM_COMPSET_save_current_active_compset "$CVM_COMPSET_DEFAULT_COMPSET_NAME"
+	fi
+	
 }
 
 

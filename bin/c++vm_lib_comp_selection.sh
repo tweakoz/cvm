@@ -20,6 +20,30 @@ CVM_COMP_SELECTION_get_compfile_for()
 }
 
 
+CVM_COMP_SELECTION_test_if_already_selected()
+{
+	local component_id=$1
+	local return_code=1 # error / not already selected by default
+	
+	CVM_debug "Checking if component \"$component_id\" has already been selected..."
+
+	local COMP_SEL_FILE=$(CVM_COMP_SELECTION_get_compfile_for $component_id)
+	if [[ -f "$COMP_SEL_FILE" ]]; then
+		## check if the "selected version" is set
+		local output=`cat "$COMP_SEL_FILE" | grep "selected_version "`
+		[[ -n "$output" ]] && return_code=0
+	fi
+
+	if [[ $return_code -ne 0 ]]; then
+		CVM_debug "  --> not selected yet"
+	else
+		CVM_debug "  --> already selected"
+	fi
+	
+	return $return_code
+}
+
+
 CVM_COMP_SELECTION_select_component()
 {
 	local component_id=$1
@@ -186,15 +210,15 @@ CVM_COMP_SELECTION_add_if_needed()
 	local component_id=$1
 	local return_code=1 # error/not exist by default
 	
-	CVM_debug "adding component selection for : $component_id"
+	CVM_debug "adding component selection for : $component_id..."
 
 	local COMP_SEL_FILE=$(CVM_COMP_SELECTION_get_compfile_for $component_id)
 	if [[ -f "$COMP_SEL_FILE" ]]; then
 		## already exists
-		CVM_debug "(already exists)"
+		CVM_debug "  --> already exists"
 		return_code=0
 	else
-		CVM_debug "(created)"
+		CVM_debug "  --> created : $(CVM_COMPSET_get_current_compset_dir)/$COMP_SEL_FILE"
 		touch $COMP_SEL_FILE
 	fi
 	
@@ -210,7 +234,7 @@ CVM_COMP_SELECTION_add_component_info_if_needed()
 	local info_line=$2
 	local return_code=1 # error by default
 	
-	CVM_debug "adding info line to component selection of \"$component_id\"..."
+	CVM_debug "adding info line to component selection of \"$component_id\" : "
 	
 	## first find the depending component file
 	local COMP_SEL_FILE=$(CVM_COMP_SELECTION_get_compfile_for $component_id)
@@ -253,24 +277,6 @@ CVM_COMP_SELECTION_add_component_dependency_if_needed()
 	## prepare req line
 	local line="require $depended_on_component_id"
 	
-	## and add it if needed
-	CVM_COMP_SELECTION_add_component_info_if_needed  $component_id  "$line"
-	return_code=$?
-	
-	return $return_code
-}
-
-
-CVM_COMP_SELECTION_add_component_stub_info_if_needed()
-{
-	local component_id=$1
-	local return_code=1 # error by default
-	
-	CVM_debug "adding stub info to component selection of \"$component_id\"..."
-	
-	## prepare line
-	local line="stub"
-
 	## and add it if needed
 	CVM_COMP_SELECTION_add_component_info_if_needed  $component_id  "$line"
 	return_code=$?

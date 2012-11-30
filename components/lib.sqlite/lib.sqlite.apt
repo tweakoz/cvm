@@ -2,7 +2,8 @@
 ## C++ Version Manager https://github.com/Offirmo/cvm
 
 ## requirements :
-## (none, this is a stub)
+## (none, at last none managed by C++VM)
 
 ## installation instructions :
-install_mode do_nothing
+install_mode apt
+apt-packets libsqlite3-dev
