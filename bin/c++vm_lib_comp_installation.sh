@@ -513,6 +513,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_installed()
 	### do nothing
 	"do_nothing")
 		## well...
+		echo "  -> done (nothig to do)"
 		return_code=0 ## OK
 		;;
 	### install via apt

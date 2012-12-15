@@ -64,6 +64,10 @@ PARAM3=$3
 
 ## init and defaults
 CVM_verbose=true  ## dev actively in progress
+if [[ $CVM_verbose ]]; then
+	OSL_debug_activated=true
+fi
+
 CVM_COMPSET_ensure_default_compset
 
 ## process params and env
@@ -73,17 +77,30 @@ CURRENT_COMPSET=$(CVM_COMPSET_get_current_active_compset)
 
 ensure_param2()
 {
+	local expected_data=$1
+	
 	if [[ -z "$PARAM2" ]]; then
 		## no param2.
 		## It was expected.
-		OSL_OUTPUT_display_error_message "A second param was expected."
+		OSL_OUTPUT_display_error_message "A second param was expected ($expected_data)."
+		usage # REM : will exit
+	fi
+}
+ensure_param3()
+{
+	local expected_data=$1
+	
+	if [[ -z "$PARAM3" ]]; then
+		## no param3.
+		## It was expected.
+		OSL_OUTPUT_display_error_message "A third param was expected ($expected_data)."
 		usage # REM : will exit
 	fi
 }
 
 ensure_param2_as_compset()
 {
-	ensure_param2
+	ensure_param2 "component set name"
 	
 	local raw_compset_name=$PARAM2
 	
@@ -139,8 +156,11 @@ exec_cmd_upgrade_current_compset()
 }
 exec_cmd_process_compfile_to_current_compset()
 {
-	## todo check params
-	local compfile_path=$CVM_DEFAULT_COMPFILE_NAME
+	## param is optional
+	local compfile_path=$PARAM2
+	if [[ -z "$compfile_path" ]]; then
+		compfile_path=$CVM_DEFAULT_COMPFILE_NAME
+	fi
 	echo "* Applying component file \"$compfile_path\" to component set \"$CURRENT_COMPSET\"..."
 	CVM_COMPFILE_set  $compfile_path  $CURRENT_COMPSET
 	echo "* ...done."
@@ -195,7 +215,28 @@ case $CMD in
 "set_compfile")
 	exec_cmd_process_compfile_to_current_compset
 	;;
-### ??? command not recognized
+
+####### secret (not documented) commands
+### validate a rsrc
+"mark_managed_rsrc_ok")
+	ensure_param2 "resource stamp path"
+	rsrc_dir=$PARAM2
+	ensure_param3 "resource id"
+	rsrc_id=$PARAM3
+	echo "* marking $rsrc_dir/$rsrc_id as available..."
+	OSL_RSRC_check "$rsrc_dir" "$rsrc_id"
+	if [[ $? -eq 0 ]]; then
+		## rsrc is already OK' nothing to do
+		echo "  -> this rsrc is already marked as available."
+	else
+		## force it available
+		OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id"
+		OSL_RSRC_end_managed_write_operation "$rsrc_dir" "$rsrc_id"
+		echo "  -> marked available."
+	fi
+	;;
+
+####### final catch all
 *)
 	echo "XXX unrecognized command : $CMD..."
 	usage # REM : will exit

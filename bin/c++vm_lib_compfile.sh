@@ -182,13 +182,16 @@ CVM_COMPFILE_parse_compfile_line()
 		CVM_COMPFILE_process_line_require "$line_data"
 		return_code=$?
 		;;
-	### ...
-	#"stub")
-	#	CVM_COMPFILE_process_line_stub "$line_data"
-	#	return_code=$?
-	#	## means that this file contains no more useful information
-	#	break ## we can stop here
-	#	;;
+	### ...may imply tools requirements
+	"build_mode")
+		CVM_COMPFILE_process_line_build_mode "$line_data"
+		return_code=$?
+		;;
+	### ...may imply tools requirements
+	"src_obtention_mode")
+		CVM_COMPFILE_process_line_src_obtention_mode "$line_data"
+		return_code=$?
+		;;
 	### ??? command not recognized
 	*)
 		## don't care : it must be one of the many install commands
@@ -386,6 +389,130 @@ CVM_COMPFILE_process_line_require()
 			return_code=0 ## everything is fine
 		fi
 		
+	fi ## param OK
+	OSL_INIT_restore_default_IFS
+
+	return $return_code
+}
+
+
+CVM_COMPFILE_process_line_build_mode()
+{
+	local line_data=$1
+	local return_code=1 # error by default
+	
+	CVM_debug "processing $CVM_COMPFILE_current_component compfile cmd build_mode..."
+	
+	IFS=","
+	typeset -a line_data_comma_splitted=( $line_data )
+	#CVM_debug "# : ${#line_data_comma_splitted[@]}"
+	#CVM_debug "@ : ${line_data_comma_splitted[@]}"
+	#CVM_debug "0 : ${line_data_comma_splitted[0]}"
+	#CVM_debug "1 : ${line_data_comma_splitted[1]}"
+	#CVM_debug "2 : ${line_data_comma_splitted[2]}"
+
+	## just check that there is at last one param
+	if [[ ${#line_data_comma_splitted[@]} -lt 1 ]]; then
+		OSL_OUTPUT_display_error_message "syntax error : build_mode cmd takes at last one parameter"
+	else
+		## now decode parameters
+		local raw_build_mode=$(OSL_STRING_trim ${line_data_comma_splitted[0]})
+		local build_mode=$(OSL_STRING_to_lower $raw_build_mode)
+		
+		## add the requirement to the component if needed
+		local needed_tool=""
+		case $build_mode in
+		cmake)
+			needed_tool="tool.cmake"
+			;;
+		autotools)
+			needed_tool="tool.autotools"
+			;;
+		*)
+			# add something if needed
+			;;
+		esac
+		
+		## now add the required component if needed
+		return_code=0 ## everything is fine (so far)
+		if [[ -n $needed_tool ]]; then
+			CVM_debug "Adding an extra dependency to $needed_tool..."
+			CVM_COMP_SELECTION_add_component_dependency_if_needed  $CVM_COMPFILE_current_component  $needed_tool
+			CVM_COMP_SELECTION_add_if_needed $needed_tool
+			CVM_COMP_SELECTION_test_if_already_selected $needed_tool
+			if [[ $? -ne 0 ]]; then
+				## add required component own deps
+				## this is complex, offload it
+				local component_source=""
+				local min_version_authorized=""
+				local max_version_authorized=""
+				local exact_version_required=""
+				CVM_COMP_SELECTION_select_component $needed_tool "$component_source" "$min_version_authorized" "$max_version_authorized" "$exact_version_required"
+				return_code=$?
+			fi
+		fi
+	fi ## param OK
+	OSL_INIT_restore_default_IFS
+
+	return $return_code
+}
+
+
+CVM_COMPFILE_process_line_src_obtention_mode()
+{
+	local line_data=$1
+	local return_code=1 # error by default
+	
+	CVM_debug "processing compfile cmd src_obtention_mode..."
+	
+	IFS=","
+	typeset -a line_data_comma_splitted=( $line_data )
+	#CVM_debug "# : ${#line_data_comma_splitted[@]}"
+	#CVM_debug "@ : ${line_data_comma_splitted[@]}"
+	#CVM_debug "0 : ${line_data_comma_splitted[0]}"
+	#CVM_debug "1 : ${line_data_comma_splitted[1]}"
+	#CVM_debug "2 : ${line_data_comma_splitted[2]}"
+
+	## just check that there is at last one param
+	if [[ ${#line_data_comma_splitted[@]} -lt 1 ]]; then
+		OSL_OUTPUT_display_error_message "syntax error : src_obtention_mode cmd takes at last one parameter"
+	else
+		## now decode parameters
+		local raw_src_obtention_mode=$(OSL_STRING_trim ${line_data_comma_splitted[0]})
+		local src_obtention_mode=$(OSL_STRING_to_lower $raw_src_obtention_mode)
+		
+		## add the requirement to the component if needed
+		local needed_tool=""
+		case $src_obtention_mode in
+		download)
+			needed_tool="tool.wget"
+			;;
+		git)
+			needed_tool="tool.git"
+			;;
+		*)
+			# add something if needed
+			;;
+		esac
+		
+		## now add the required component if needed
+		return_code=0 ## everything is fine (so far)
+		if [[ -n $needed_tool ]]; then
+			CVM_debug "Adding an extra dependency to $needed_tool..."
+			CVM_COMP_SELECTION_add_component_dependency_if_needed  $CVM_COMPFILE_current_component  $needed_tool
+			CVM_COMP_SELECTION_add_if_needed $needed_tool
+			CVM_COMP_SELECTION_test_if_already_selected $needed_tool
+			if [[ $? -ne 0 ]]; then
+				## add required component own deps
+				## this is complex, offload it
+				local component_source=""
+				local min_version_authorized=""
+				local max_version_authorized=""
+				local exact_version_required=""
+				CVM_COMP_SELECTION_select_component $needed_tool "$component_source" "$min_version_authorized" "$max_version_authorized" "$exact_version_required"
+				return_code=$?
+			fi
+		fi
 	fi ## param OK
 	OSL_INIT_restore_default_IFS
 

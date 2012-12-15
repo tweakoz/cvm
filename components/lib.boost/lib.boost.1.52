@@ -1,0 +1,17 @@
+## This file is a C++VM component definition
+## C++ Version Manager https://github.com/Offirmo/cvm
+
+## requirements :
+# yes, autotools are required by bjam to find some stuff...
+require tool.autotools
+require lib.python-dev
+require lib.bzip2
+
+## installation instructions :
+install_mode                    build
+build_mode                      bjam
+src_obtention_mode              archive
+
+archive_obtention_mode          download
+archive_download_url            http://sourceforge.net/projects/boost/files/boost/1.52.0/boost_1_52_0.tar.bz2/download
+archive_download_target         boost_1_52_0.tar.bz2

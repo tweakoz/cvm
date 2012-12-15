@@ -13,3 +13,4 @@ chmod +x bin/c++vm
 chmod +x bin/cvm_exec
 chmod +x bin/c++vm.sh
 chmod +x bin/c++vm_exec.sh
+chmod +x components/tool.cmake/custom_build.2.8.10.sh

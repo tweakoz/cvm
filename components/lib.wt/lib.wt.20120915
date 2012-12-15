@@ -10,9 +10,11 @@ require tool.cmake, version : 2.6+
 ## installation instructions :
 install_mode                    build
 build_mode                      cmake
-src_obtention_mode              archive
+src_obtention_mode              git
+git_url                         git://github.com/kdeforche/wt.git
+git_commit_hash                 86f52cb0e04d4c879017f77a4b457348993a2fde
 
-archive_obtention_mode          path
-archive_path                    /srv/dev/misc/wt_20120915_mod.zip
-#archive_path                    /home/ubuntu/wt_20120915_mod.zip
-#unexpected_archive_unpack_dir   wt-3.2.3
+#archive_obtention_mode          path
+#archive_path                    /work/misc/wt_20120915_mod.zip
+
+#http://stackoverflow.com/questions/3790671/how-to-in-git-clone-a-remote-github-repository-from-a-specifed-date

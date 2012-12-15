@@ -10,10 +10,5 @@ require tool.cmake, version : 2.6+
 ## installation instructions :
 install_mode                    build
 build_mode                      cmake
-cmake_additional_options        -D
-src_obtention_mode              archive
-
-archive_obtention_mode          download
-archive_download_url            http://prdownloads.sourceforge.net/witty/wt-3.2.3.tar.gz?download
-archive_download_target         wt-3.2.3.tar.gz
-unexpected_archive_unpack_dir   wt-3.2.3
+src_obtention_mode              git
+git_url                         git://github.com/kdeforche/wt.git

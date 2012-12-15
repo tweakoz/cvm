@@ -2,8 +2,9 @@
 ## C++ Version Manager https://github.com/Offirmo/cvm
 
 ## requirements :
-## (none)
-## XXX zlib ? python ?
+require tool.autotools
+require lib.python-dev
+require lib.bzip2
 
 ## installation instructions :
 install_mode                    build
