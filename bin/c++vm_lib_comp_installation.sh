@@ -380,18 +380,22 @@ CVM_COMP_INSTALL_collect_includes_for_freshly_installed_component()
 	local component_version=$2
 	local return_code=1 # error/not exist by default
 	
-	CVM_debug "Linking includes for $component_id..."
+	CVM_debug "* Linking includes for $component_id..."
 
 	local comp_inc_dir=$(CVM_COMPONENT_get_component_include_dir "$component_version")
 	comp_inc_dir=$(readlink -f "$comp_inc_dir")
 
+	CVM_debug "  expected in : $comp_inc_dir..."
 	if [[ -d "$comp_inc_dir" ]]; then
 		local comp_name=$(CVM_COMPONENT_get_component_target_name "$component_id")
 		
 		local index_inc_dir="$CVM_COMP_INCLUDES_FOR_INDEXER_DIR_NAME/$comp_name"
-		index_inc_dir=$(readlink -f "$index_inc_dir")
+#		index_inc_dir=$(readlink -f "$index_inc_dir")
+		index_inc_dir=$(OSL_FILE_abspath "$index_inc_dir")
 	
+		CVM_debug "  target set to $index_inc_dir ($(pwd)/$CVM_COMP_INCLUDES_FOR_INDEXER_DIR_NAME/$comp_name)..."
 		ln --symbolic "$comp_inc_dir" "$index_inc_dir"
+		## don't care if it failed
 	fi
 
 	return_code=0
