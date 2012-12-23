@@ -316,3 +316,196 @@ CVM_COMP_SELECTION_add_explicit_required_version_to_comp_sel()
 	
 	return $return_code
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## dump infos about current component selection
+CVM_COMP_SELECTION_dump()
+{
+	local return_code=1 # error by default
+	
+	local COMPSET_DIR=$(CVM_COMPSET_get_compset_dir $CURRENT_COMPSET)
+	local oldwd=$(pwd)
+	CVM_debug "* moving to \"$COMPSET_DIR\"..."
+	cd "$COMPSET_DIR"
+
+	CVM_COMP_SELECTION_last_seen_selected_version=""
+	CVM_COMP_SELECTION_temp_dir=`mktemp --directory`
+
+	CVM_COMP_SELECTION_parse_compselfile_for_component "$CVM_ROOT_COMPONENT_NAME"
+	return_code=$?
+
+	rm -rf "$CVM_COMP_SELECTION_temp_dir"
+
+	CVM_debug "* moving back to \"$oldwd\"..."
+	cd "$oldwd"
+
+	return $return_code
+}
+
+
+
+
+
+CVM_COMP_SELECTION_parse_compselfile_for_component()
+{
+	local component_id=$1
+	local return_code=1 # Error by default
+
+	local COMPSEL_FILE=$(CVM_COMP_SELECTION_get_compfile_for $component_id)
+	CVM_debug "* parsing component selection file : \"$COMPSEL_FILE\"..."
+
+	## and start parsing, for default component
+	CVM_COMPFILE_parse_compfile "$COMPSEL_FILE" $component_id "CVM_COMP_SELECTION_parse_compselfile_line"
+	return_code=$?
+	
+	if [[ $return_code -eq 0 ]]; then
+		if [[ ! $component_id == "$CVM_ROOT_COMPONENT_NAME" ]]; then
+			local compselfile_mark="$CVM_COMP_SELECTION_temp_dir/$CVM_COMP_SELECTION_last_seen_selected_version"
+			if [[ ! -f "$compselfile_mark" ]]; then
+				echo "  - $CVM_COMP_SELECTION_last_seen_selected_version"
+				touch "$compselfile_mark"
+			fi
+		fi
+	fi
+
+	return $return_code
+}
+
+
+CVM_COMP_SELECTION_parse_compselfile_line()
+{
+	local line="$*"
+	local return_code=0 # OK until found otherwise
+	CVM_debug "parsing component selection file line \"$line\"..."
+	
+	IFS=" "
+	## REM : -a = array, splitted along IFS
+	typeset -a line_space_splitted=( $line )
+	#CVM_debug "- : ${line_space_splitted}"
+	#CVM_debug "0 : ${line_space_splitted[0]}"
+	#CVM_debug "1 : ${line_space_splitted[1]}"
+	#CVM_debug "2 : ${line_space_splitted[2]}"
+	
+	local line_cmd=${line_space_splitted[0]}
+	local cmd_length=${#line_cmd}
+	local line_data=${line:$cmd_length}
+	#CVM_debug "line cmd  = : \"$line_cmd\"..."
+	#CVM_debug "line data = : \"$line_data\"..."
+	
+	case $line_cmd in
+	### ...
+	"include")
+		##CVM_COMPFILE_process_line_include "$line_data"
+		##return_code=$?
+		OSL_OUTPUT_warn_not_implemented "include"
+		return_code=1
+		;;
+	### ...
+	"require")
+		CVM_COMP_SELECTION_process_line_require "$line_data"
+		return_code=$?
+		;;
+	### ...
+	"selected_version")
+		CVM_COMP_SELECTION_process_line_selected_version "$line_data"
+		return_code=$?
+		;;
+	### command not recognized --> must be an installation instruction, ignore
+	*)
+		do_nothing=1
+		;;
+	esac
+
+	OSL_INIT_restore_default_IFS
+	
+	return $return_code
+}
+
+
+CVM_COMP_SELECTION_process_line_require()
+{
+	local line_data=$1
+	local return_code=1 # error by default
+	
+	CVM_debug "processing comp selection file cmd require..."
+	
+	## to allow recursion since we have a state
+	local old_last_seen_selected_version=$CVM_COMP_SELECTION_last_seen_selected_version
+	
+	IFS=","
+	typeset -a line_data_comma_splitted=( $line_data )
+	#CVM_debug "# : ${#line_data_comma_splitted[@]}"
+	#CVM_debug "@ : ${line_data_comma_splitted[@]}"
+	#CVM_debug "0 : ${line_data_comma_splitted[0]}"
+	#CVM_debug "1 : ${line_data_comma_splitted[1]}"
+	#CVM_debug "2 : ${line_data_comma_splitted[2]}"
+	
+	## just check that there is at last one param
+	if [[ ${#line_data_comma_splitted[@]} -lt 1 ]]; then
+		OSL_OUTPUT_display_error_message "syntax error : require cmd takes at last one parameter"
+		## return code stays NOK
+	else
+		## now decode parameters
+		local component_id=$(OSL_STRING_trim ${line_data_comma_splitted[0]})
+		
+		## parse this component own selection file
+		## in order to install its dependencies first
+		CVM_COMP_SELECTION_parse_compselfile_for_component $component_id
+		return_code=$?
+		if [[ $return_code -ne 0 ]]; then
+			OSL_OUTPUT_display_error_message "dependencies failed for component \"$component_id\"..."
+			## return code stays NOK
+		fi
+	fi ## param OK ?
+	
+	CVM_debug "require line processing done : $return_code"
+	CVM_COMP_SELECTION_last_seen_selected_version=$old_last_seen_selected_version
+	
+	return $return_code
+}
+
+
+
+CVM_COMP_SELECTION_process_line_selected_version()
+{
+	local line_data=$1
+	local return_code=1 # error by default
+	
+	CVM_debug "processing comp selection file cmd selected_version..."
+	
+	IFS=","
+	typeset -a line_data_comma_splitted=( $line_data )
+	#CVM_debug "# : ${#line_data_comma_splitted[@]}"
+	#CVM_debug "@ : ${line_data_comma_splitted[@]}"
+	#CVM_debug "0 : ${line_data_comma_splitted[0]}"
+	#CVM_debug "1 : ${line_data_comma_splitted[1]}"
+	#CVM_debug "2 : ${line_data_comma_splitted[2]}"
+	
+	## just check that there is at last one param
+	if [[ ${#line_data_comma_splitted[@]} -lt 1 ]]; then
+		OSL_OUTPUT_display_error_message "syntax error : selected_version cmd takes at last one parameter"
+		## return code stays NOK
+	else
+		## now decode parameters
+		CVM_COMP_SELECTION_last_seen_selected_version=$(OSL_STRING_trim ${line_data_comma_splitted[0]})
+		return_code=0
+	fi ## param OK ?
+	
+	CVM_debug "selected_version line processing done : $return_code, $CVM_COMP_SELECTION_last_seen_selected_version"
+	
+	return $return_code
+}

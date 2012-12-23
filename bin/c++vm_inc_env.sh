@@ -9,8 +9,8 @@
 
 
 ## current version
-CVM_VERSION="1.0.0"
-CVM_STAMP="2012/11/26"
+CVM_VERSION="1.0.1"
+CVM_STAMP="2012/12/16"
 
 
 ## Various constants

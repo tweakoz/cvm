@@ -63,8 +63,10 @@ PARAM2=$2
 PARAM3=$3
 
 ## init and defaults
-CVM_verbose=true  ## dev actively in progress
-if [[ $CVM_verbose ]]; then
+#CVM_verbose=true  ## dev actively in progress
+CVM_verbose=false
+CVM_verbose=true
+if [[ "$CVM_verbose" == "true" ]]; then
 	OSL_debug_activated=true
 fi
 
@@ -234,6 +236,19 @@ case $CMD in
 		OSL_RSRC_end_managed_write_operation "$rsrc_dir" "$rsrc_id"
 		echo "  -> marked available."
 	fi
+	;;
+### in case of error
+"release_locks")
+	echo "* releasing all incorrectly held rsrc protection locks..."
+	COMPSET_DIR=$(CVM_COMPSET_get_compset_dir $CURRENT_COMPSET)
+	oldwd=$(pwd)
+	CVM_debug "* moving to \"$COMPSET_DIR\"..."
+	cd "$COMPSET_DIR"
+
+	find . -type l -name "*$OSL_MUTEX_SUFFIX" -print -exec rm {} \;
+
+	CVM_debug "* moving back to \"$oldwd\"..."
+	cd "$oldwd"
 	;;
 
 ####### final catch all

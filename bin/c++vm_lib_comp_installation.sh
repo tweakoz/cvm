@@ -143,37 +143,6 @@ CVM_COMP_INSTALL_parse_compselfile_line()
 }
 
 
-CVM_COMP_INSTALL_process_line_selected_version()
-{
-	local line_data=$1
-	local return_code=1 # error by default
-	
-	CVM_debug "processing comp selection file cmd selected_version..."
-	
-	IFS=","
-	typeset -a line_data_comma_splitted=( $line_data )
-	#CVM_debug "# : ${#line_data_comma_splitted[@]}"
-	#CVM_debug "@ : ${line_data_comma_splitted[@]}"
-	#CVM_debug "0 : ${line_data_comma_splitted[0]}"
-	#CVM_debug "1 : ${line_data_comma_splitted[1]}"
-	#CVM_debug "2 : ${line_data_comma_splitted[2]}"
-	
-	## just check that there is at last one param
-	if [[ ${#line_data_comma_splitted[@]} -lt 1 ]]; then
-		OSL_OUTPUT_display_error_message "syntax error : selected_version cmd takes at last one parameter"
-		## return code stays NOK
-	else
-		## now decode parameters
-		CVM_COMP_INSTALL_last_seen_selected_version=$(OSL_STRING_trim ${line_data_comma_splitted[0]})
-		return_code=0
-	fi ## param OK ?
-	
-	CVM_debug "selected_version line processing done : $return_code, $CVM_COMP_INSTALL_last_seen_selected_version"
-	
-	return $return_code
-}
-
-
 CVM_COMP_INSTALL_process_line_require()
 {
 	local line_data=$1
@@ -212,6 +181,37 @@ CVM_COMP_INSTALL_process_line_require()
 }
 
 
+CVM_COMP_INSTALL_process_line_selected_version()
+{
+	local line_data=$1
+	local return_code=1 # error by default
+	
+	CVM_debug "processing comp selection file cmd selected_version..."
+	
+	IFS=","
+	typeset -a line_data_comma_splitted=( $line_data )
+	#CVM_debug "# : ${#line_data_comma_splitted[@]}"
+	#CVM_debug "@ : ${line_data_comma_splitted[@]}"
+	#CVM_debug "0 : ${line_data_comma_splitted[0]}"
+	#CVM_debug "1 : ${line_data_comma_splitted[1]}"
+	#CVM_debug "2 : ${line_data_comma_splitted[2]}"
+	
+	## just check that there is at last one param
+	if [[ ${#line_data_comma_splitted[@]} -lt 1 ]]; then
+		OSL_OUTPUT_display_error_message "syntax error : selected_version cmd takes at last one parameter"
+		## return code stays NOK
+	else
+		## now decode parameters
+		CVM_COMP_INSTALL_last_seen_selected_version=$(OSL_STRING_trim ${line_data_comma_splitted[0]})
+		return_code=0
+	fi ## param OK ?
+	
+	CVM_debug "selected_version line processing done : $return_code, $CVM_COMP_INSTALL_last_seen_selected_version"
+	
+	return $return_code
+}
+
+
 CVM_COMP_INSTALL_ensure_component_installed()
 {
 	local component_id=$1
@@ -239,7 +239,7 @@ CVM_COMP_INSTALL_ensure_component_installed()
 	else
 		## then install the component itself
 		local OSlmomd_bkp=$OSL_STAMP_last_managed_operation_modif_date
-		OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id"
+		OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id" "CVM_COMP_INSTALL_ensure_component_installed"
 		
 		CVM_debug "installing component : $component_id / $CVM_COMP_INSTALL_last_seen_selected_version"
 
@@ -513,7 +513,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_installed()
 	### do nothing
 	"do_nothing")
 		## well...
-		echo "  -> done (nothig to do)"
+		echo "  -> done (nothing to do)"
 		return_code=0 ## OK
 		;;
 	### install via apt
@@ -826,11 +826,17 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_built()
 		CVM_COMP_INSTALL_compute_loaded_component_build_src_dir $component_id $component_version
 		local src_dir=$return_value
 		#pwd
-		#echo "cmake -Wdev $src_dir -DCMAKE_INSTALL_PREFIX:PATH=$prefix"
-		echo "BOOST_ROOT=$BOOST_ROOT"
 		#ls
 		cmake --version
-		cmake -Wdev "$src_dir" -DCMAKE_INSTALL_PREFIX:PATH="$prefix"
+		## additional options ?
+		CVM_COMP_INSTALL_get_value_from_cached_component_for "cmake_additional_options"
+		local cmake_additional_options=$return_value
+		if [[ -n "$cmake_additional_options" ]]; then
+			## 
+			cmake_additional_options=$(CVM_COMP_INSTALL_substitute_keywords "$cmake_additional_options" "$prefix")
+		fi
+		echo "cmake -Wdev $src_dir -DCMAKE_INSTALL_PREFIX:PATH=$prefix $cmake_additional_options"
+		cmake -Wdev "$src_dir" -DCMAKE_INSTALL_PREFIX:PATH="$prefix" $cmake_additional_options
 		make
 		return_code=$?
 		## back to prev dir
@@ -935,6 +941,23 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_built()
 	
 	return $return_code
 }
+
+
+CVM_COMP_INSTALL_substitute_keywords()
+{
+	local string_to_substitute=$1
+	local prefix=$2
+	local result_string=$string_to_substitute # for now
+
+	#CVM_debug "* substituting \"$string_to_substitute\"..."
+
+	result_string=`echo "$result_string" | sed s!{{dir_result}}!$prefix!g`
+
+	#CVM_debug "  --> substitution result \"$result_string\"."
+
+	echo "$result_string"
+}
+
 
 
 CVM_COMP_INSTALL_compute_loaded_component_build_src_dir()
