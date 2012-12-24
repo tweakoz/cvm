@@ -238,7 +238,7 @@ CVM_COMP_INSTALL_ensure_component_installed()
 		## return code stays NOK
 	else
 		## then install the component itself
-		local OSlmomd_bkp=$OSL_STAMP_last_managed_operation_modif_date
+		local OSlmomd_bkp=$OSL_RSRC_state
 		OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id" "CVM_COMP_INSTALL_ensure_component_installed"
 		
 		CVM_debug "installing component : $component_id / $CVM_COMP_INSTALL_last_seen_selected_version"
@@ -276,7 +276,7 @@ CVM_COMP_INSTALL_ensure_component_installed()
 				return_code=1 # error
 			fi
 		fi
-		OSL_STAMP_last_managed_operation_modif_date=$OSlmomd_bkp
+		OSL_RSRC_state=$OSlmomd_bkp
 	fi ## dependencies
 
 	if [[ $return_code -ne 0 ]]; then
@@ -564,7 +564,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_installed_via_apt()
 
 	## now we can install
 	
-	local OSlmomd_bkp=$OSL_STAMP_last_managed_operation_modif_date
+	local OSlmomd_bkp=$OSL_RSRC_state
 	OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id"
 
 	CVM_COMP_INSTALL_get_value_from_cached_component_for "apt_packets"
@@ -586,7 +586,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_installed_via_apt()
 			return_code=1 # error
 		fi
 	fi
-	OSL_STAMP_last_managed_operation_modif_date=$OSlmomd_bkp
+	OSL_RSRC_state=$OSlmomd_bkp
 
 	OSL_OUTPUT_warn_not_implemented "TODO : collect env and includes !"
 	
@@ -625,7 +625,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_built_and_installed()
 	
 	## now we can install
 	
-	local OSlmomd_bkp=$OSL_STAMP_last_managed_operation_modif_date
+	local OSlmomd_bkp=$OSL_RSRC_state
 	OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id"
 
 	## first check install mode
@@ -751,7 +751,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_built_and_installed()
 			return_code=1 # error
 		fi
 	fi
-	OSL_STAMP_last_managed_operation_modif_date=$OSlmomd_bkp
+	OSL_RSRC_state=$OSlmomd_bkp
 
 	if [[ $? -ne 0 ]]; then
 		OSL_OUTPUT_display_error_message "error while installing (after build) component \"$component_version\"..."
@@ -797,7 +797,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_built()
 
 
 	## now we can build
-	local OSlmomd_bkp=$OSL_STAMP_last_managed_operation_modif_date
+	local OSlmomd_bkp=$OSL_RSRC_state
 	OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id"
 
 
@@ -937,7 +937,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_built()
 			return_code=1 # error
 		fi
 	fi
-	OSL_STAMP_last_managed_operation_modif_date=$OSlmomd_bkp
+	OSL_RSRC_state=$OSlmomd_bkp
 
 	if [[ $? -ne 0 ]]; then
 		OSL_OUTPUT_display_error_message "error while building component \"$component_version\"..."
@@ -1047,7 +1047,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_src_are_available()
 		return 1
 	fi
 
-	local OSlmomd_bkp=$OSL_STAMP_last_managed_operation_modif_date
+	local OSlmomd_bkp=$OSL_RSRC_state
 	OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id"
 
 	## do we have "in source build" or "out of source build" ?
@@ -1080,7 +1080,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_src_are_available()
 			return_code=1 # error
 		fi
 	fi
-	OSL_STAMP_last_managed_operation_modif_date=$OSlmomd_bkp
+	OSL_RSRC_state=$OSlmomd_bkp
 
 	if [[ $? -ne 0 ]]; then
 		OSL_OUTPUT_display_error_message "error while making component \"$component_version\" src available !"
@@ -1109,7 +1109,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_shared_src_are_available()
 	fi
 
 
-	local OSlmomd_bkp=$OSL_STAMP_last_managed_operation_modif_date
+	local OSlmomd_bkp=$OSL_RSRC_state
 	OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id"
 	
 	## how do we get the src ??
@@ -1172,7 +1172,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_shared_src_are_available()
 			return_code=1 # error
 		fi
 	fi
-	OSL_STAMP_last_managed_operation_modif_date=$OSlmomd_bkp
+	OSL_RSRC_state=$OSlmomd_bkp
 
 	return $return_code
 }
@@ -1196,7 +1196,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_shared_archive_is_available()
 		return 0
 	fi
 
-	local OSlmomd_bkp=$OSL_STAMP_last_managed_operation_modif_date
+	local OSlmomd_bkp=$OSL_RSRC_state
 	OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id"
 	
 	## how do we get the archive ??
@@ -1269,7 +1269,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_shared_archive_is_available()
 			return_code=1 # error
 		fi
 	fi
-	OSL_STAMP_last_managed_operation_modif_date=$OSlmomd_bkp
+	OSL_RSRC_state=$OSlmomd_bkp
 
 	if [[ $return_code -ne 0 ]]; then
 		OSL_OUTPUT_display_error_message "couldn't obtain component \"$component_version\" archive..."
