@@ -342,11 +342,17 @@ CVM_COMP_SELECTION_dump()
 	CVM_debug "* moving to \"$COMPSET_DIR\"..."
 	cd "$COMPSET_DIR"
 
-	CVM_COMP_SELECTION_last_seen_selected_version=""
-	CVM_COMP_SELECTION_temp_dir=`mktemp --directory`
+	local root_compsel_file=$(CVM_COMP_SELECTION_get_compfile_for $CVM_ROOT_COMPONENT_NAME)
+	if ! [[ -f "$root_compsel_file" ]]; then
+		echo "  (none)"
+		return_code=0
+	else
+		CVM_COMP_SELECTION_last_seen_selected_version=""
+		CVM_COMP_SELECTION_temp_dir=`mktemp --directory`
 
-	CVM_COMP_SELECTION_parse_compselfile_for_component "$CVM_ROOT_COMPONENT_NAME"
-	return_code=$?
+		CVM_COMP_SELECTION_parse_compselfile_for_component "$CVM_ROOT_COMPONENT_NAME"
+		return_code=$?
+	fi
 
 	rm -rf "$CVM_COMP_SELECTION_temp_dir"
 
