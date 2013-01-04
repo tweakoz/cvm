@@ -65,7 +65,7 @@ PARAM3=$3
 ## init and defaults
 #CVM_verbose=true  ## dev actively in progress
 CVM_verbose=false
-#CVM_verbose=true
+CVM_verbose=true
 if [[ "$CVM_verbose" == "true" ]]; then
 	OSL_debug_activated=true
 fi
@@ -239,16 +239,7 @@ case $CMD in
 	;;
 ### in case of error
 "release_locks")
-	echo "* releasing all incorrectly held rsrc protection locks..."
-	COMPSET_DIR=$(CVM_COMPSET_get_compset_dir $CURRENT_COMPSET)
-	oldwd=$(pwd)
-	CVM_debug "* moving to \"$COMPSET_DIR\"..."
-	cd "$COMPSET_DIR"
-
-	find . -type l -name "*$OSL_MUTEX_SUFFIX" -print -exec rm {} \;
-
-	CVM_debug "* moving back to \"$oldwd\"..."
-	cd "$oldwd"
+	CVM_COMMANDS_release_incorrectly_held_locks
 	;;
 
 ####### final catch all

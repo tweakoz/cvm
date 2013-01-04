@@ -35,3 +35,27 @@ CVM_COMMANDS_list_compsets()
 		echo "  $(basename $compset_dir)"
 	done
 }
+
+CVM_COMMANDS_release_incorrectly_held_locks()
+{
+	echo "* releasing all incorrectly held rsrc protection locks..."
+
+	## release locks of current compset
+	COMPSET_DIR=$(CVM_COMPSET_get_compset_dir $CURRENT_COMPSET)
+	oldwd=$(pwd)
+	CVM_debug "* moving to \"$COMPSET_DIR\"..."
+	cd "$COMPSET_DIR"
+
+	find . -type l -name "*$OSL_MUTEX_SUFFIX" -print -exec rm {} \;
+
+	## now release locks of shared cache
+	CVM_debug "* moving to \"$CVM_DATA_DIR\"..."
+	cd "$CVM_DATA_DIR"
+
+	find . -type l -name "*$OSL_MUTEX_SUFFIX" -print -exec rm {} \;
+
+	## done
+	CVM_debug "* moving back to \"$oldwd\"..."
+	cd "$oldwd"
+}
+
