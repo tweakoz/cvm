@@ -18,6 +18,7 @@ CVM_COMMANDS_print_status()
 	echo "++++   C++ Version Manager   ++++"
 	echo "* version            : $CVM_VERSION"
 	echo "* stamp              : $(stat -c %y "$OSL_INIT_script_full_path")"
+	echo "* using OSL version  : $OSL_VERSION [$OSL_STAMP]"
 #	echo "* compset count      : [TODO]"
 	echo "* default data dir   : $CVM_DEFAULT_DATA_DIR"
 	echo "* current data dir   : $CVM_DATA_DIR"
@@ -27,6 +28,7 @@ CVM_COMMANDS_print_status()
 	CVM_COMP_SELECTION_dump
 }
 
+
 CVM_COMMANDS_list_compsets()
 {
 	echo "Currently available C++VM components sets :"
@@ -35,6 +37,7 @@ CVM_COMMANDS_list_compsets()
 		echo "  $(basename $compset_dir)"
 	done
 }
+
 
 CVM_COMMANDS_release_incorrectly_held_locks()
 {
@@ -58,4 +61,3 @@ CVM_COMMANDS_release_incorrectly_held_locks()
 	CVM_debug "* moving back to \"$oldwd\"..."
 	cd "$oldwd"
 }
-

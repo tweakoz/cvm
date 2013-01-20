@@ -1,19 +1,17 @@
 C/C++ Version Manager
 =====================
 
-C/C++ Version Manager is a tool for managing/installing all the dependencies/components of a C/C++ app :
+C/C++ Version Manager. A tool for automatically managing your C/C++ dependencies :
 - compiler
 - libraries
 - misceanellous build tools
-
-Each component is automatically installed with required version and mode (debug/release).
+Each component is automatically installed with specific versions and modes (debug/release).
 
 Inspired from the great RVM (Ruby Version Manager) : https://rvm.io// and the Bundler tool : http://gembundler.com/gemfile.html
 
-C++VM is available at : https://github.com/Offirmo/cvm
-
-C++VM has a redmine : http://www.hostedredmine.com/projects/cvm
-
+- C++VM is available at : https://github.com/Offirmo/cvm
+- Presentation of the tool : http://fr.slideshare.net/Offirmo/introducing-cvm
+- C++VM has a tracker : https://www.pivotaltracker.com/projects/710241
 
 
 
@@ -56,7 +54,7 @@ Installation
 Requirements
 ------------
 C++VM is in pure shell. (Would have been a heresy to use python ;)
-C++VM need the Offirmo Shell Library  : https://github.com/Offirmo/offirmo-shell-lib
+C++VM need the Offirmo Shell Library : https://github.com/Offirmo/offirmo-shell-lib
 
 Installation
 ------------
