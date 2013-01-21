@@ -1,4 +1,21 @@
-## C++ VM component set definition
+## cvm component set definition
 ## see https://github.com/Offirmo/cvm
+##
+## Thanks to this file and the cvm tool,
+## all exact dependencies are installed.
 
-## TODO...
+cvm_minimum_required_version 1.0
+
+# As far as I know, no particular gcc version is required
+require compiler.gcc
+require lib.std
+
+require lib.UnitTest++, version : 1.4+
+
+# need a recent version
+require lib.Boost,      version : 1.51+
+
+# sqlite is an optional dependency of Wt. We want a decent version for some bugfixes
+require lib.sqlite,     version : 3.7+
+# exact version of Wt + ensure that sqlite is built before
+require lib.Wt,         version : 3.2.3, require : lib.sqlite

@@ -9,9 +9,9 @@ Each component is automatically installed with specific versions and modes (debu
 
 Inspired from the great RVM (Ruby Version Manager) : https://rvm.io// and the Bundler tool : http://gembundler.com/gemfile.html
 
-- C++VM is available at : https://github.com/Offirmo/cvm
-- Presentation of the tool : http://fr.slideshare.net/Offirmo/introducing-cvm
-- C++VM has a tracker : https://www.pivotaltracker.com/projects/710241
+- cvm is available at : https://github.com/Offirmo/cvm
+- Slideshow presenting the tool : http://fr.slideshare.net/Offirmo/introducing-cvm
+- cvm has a tracker : https://www.pivotaltracker.com/projects/710241
 
 
 
@@ -53,8 +53,7 @@ Installation
 
 Requirements
 ------------
-C++VM is in pure shell. (Would have been a heresy to use python ;)
-C++VM need the Offirmo Shell Library : https://github.com/Offirmo/offirmo-shell-lib
+cvm is in pure shell. (Would have been a heresy to use python ;)
 
 Installation
 ------------
@@ -65,6 +64,7 @@ Check if it works by typing : (after relaunching your shell for the PATH alterat
  `cvm`
 
 It should display some help.
+If it does not, check that 
 
 
 Usage
