@@ -61,3 +61,15 @@ CVM_COMMANDS_release_incorrectly_held_locks()
 	CVM_debug "* moving back to \"$oldwd\"..."
 	cd "$oldwd"
 }
+
+CVM_COMMANDS_create_component()
+{
+	echo "Please enter the component name : (one word, filesystem-friendly, example : foo)"
+	read name
+	echo "name : $name"
+	echo "Please enter the component type : (lib, tool or compiler)"
+	read type
+	echo "type : $type"
+	mkdir -p "$CVM_INTEGRATED_COMP_DEFS_DIR/$type.$name"
+	
+}

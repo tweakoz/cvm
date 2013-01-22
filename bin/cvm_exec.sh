@@ -5,7 +5,13 @@
 
 
 ## We use the OSL shell lib
-#OSL_debug=true
+#OSL_debug_activated=true
+## To ease shipment, we have an embedded OSL copy
+## but we'll use system one if it's more recent.
+## There is a technique for that (cf. OSL doc)
+embedded_osl_bootstrap_script=`dirname "$0"`/../misc/contrib/offirmo-shell-lib/bin/osl_lib_bootstrap.sh
+source "$embedded_osl_bootstrap_script" "$embedded_osl_bootstrap_script"
+## OSL should now be available, start using it
 source osl_lib_init.sh
 source osl_lib_debug.sh
 source osl_lib_output.sh
@@ -18,11 +24,11 @@ source osl_lib_archive.sh
 source osl_lib_pathvar.sh
 
 ## Now load our config
-source c++vm_inc_env.sh
+source cvm_inc_env.sh
 
 ## And load our primitives
-source c++vm_lib_base.sh
-source c++vm_lib_compset.sh
+source cvm_lib_base.sh
+source cvm_lib_compset.sh
 
 
 usage()

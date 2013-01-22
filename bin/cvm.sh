@@ -25,16 +25,16 @@ source osl_lib_pathvar.sh
 source osl_lib_file.sh
 
 ## Now load our config
-source c++vm_inc_env.sh
+source cvm_inc_env.sh
 
 ## And load our primitives
-source c++vm_lib_base.sh
-source c++vm_lib_compset.sh
-source c++vm_lib_compfile.sh
-source c++vm_lib_component.sh
-source c++vm_lib_comp_selection.sh
-source c++vm_lib_comp_installation.sh
-source c++vm_lib_commands.sh
+source cvm_lib_base.sh
+source cvm_lib_compset.sh
+source cvm_lib_compfile.sh
+source cvm_lib_component.sh
+source cvm_lib_comp_selection.sh
+source cvm_lib_comp_installation.sh
+source cvm_lib_commands.sh
 
 
 echo ""
@@ -58,6 +58,9 @@ usage()
 	echo "    set_compfile [compfile]"
 	echo "    update"
 	echo "    upgrade"
+	echo "- misc :"
+	echo "    create_component"
+	echo "    release_locks"
 	echo "..."
 	exit 1
 }
@@ -223,6 +226,14 @@ case $CMD in
 "set_compfile")
 	exec_cmd_process_compfile_to_current_compset
 	;;
+### in case of error
+"release_locks")
+	CVM_COMMANDS_release_incorrectly_held_locks
+	;;
+### assistant for creating a new component
+"create_component")
+	CVM_COMMANDS_create_component
+	;;
 
 ####### secret (not documented) commands
 ### validate a rsrc
@@ -242,10 +253,6 @@ case $CMD in
 		OSL_RSRC_end_managed_write_operation "$rsrc_dir" "$rsrc_id"
 		echo "  -> marked available."
 	fi
-	;;
-### in case of error
-"release_locks")
-	CVM_COMMANDS_release_incorrectly_held_locks
 	;;
 
 ####### final catch all

@@ -6,4 +6,4 @@
 ## This file is a simple wrapper provided for convenient invocation.
 
 
-c++vm_exec.sh $*
+cvm_exec.sh $*
