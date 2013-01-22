@@ -1,18 +1,31 @@
-#!/bin/sh -x
+#!/bin/bash
 
 ## Offirmo Shell Library
 ## https://github.com/Offirmo/offirmo-shell-lib
 ##
-## This file just fix the exec flag for cvm scripts.
-## Just don't care about it.
+## This file updates the embedded OSL copy.
 
-set -ev
+echo ""
 
-## supposedly run from OSL root dir
+script_full_path=`readlink -f "$1"`
+#echo "script_full_path set to $script_full_path"
+script_full_dir=`dirname "$script_full_path"`
 
-chmod +x bin/cvm
-chmod +x bin/c++vm
-chmod +x bin/cvm_exec
-chmod +x bin/c++vm.sh
-chmod +x bin/c++vm_exec.sh
-chmod +x components/tool.cmake/custom_build.2.8.10.sh
+## detect an existing OSL
+installed_osl_version_script_path=`which 'osl_version.sh' 2> /dev/null`
+if [[ $? -ne 0 ]]; then
+	echo "XXX failed to detect system OSL !!!"
+else
+	## an OSL is in the path
+	echo "installed OSL found ! ($installed_osl_version_script_path)"
+
+	## first rationalize the path
+	installed_osl_version_script_path=`readlink -f "$installed_osl_version_script_path"`
+	## refine path
+	installed_osl_copy_bin_path=`dirname "$installed_osl_version_script_path"`
+	echo "OSL copy found in : $installed_osl_copy_bin_path"
+
+	## copy it
+	echo "copying from $installed_osl_copy_bin_path to $script_full_dir/contrib/offirmo-shell-lib/bin"
+	cp -r "$installed_osl_copy_bin_path"/* "$script_full_dir/contrib/offirmo-shell-lib/bin"
+fi

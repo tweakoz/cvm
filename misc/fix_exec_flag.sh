@@ -4,6 +4,7 @@
 ## https://github.com/Offirmo/offirmo-shell-lib
 ##
 ## This file just fix the exec flag for cvm scripts.
+## It can be run from anywhere.
 
 set -ev
 
@@ -13,8 +14,6 @@ script_full_dir=`dirname "$script_full_path"`
 echo "script_full_dir  : $script_full_dir"
 cvm_full_dir=`dirname "$script_full_dir"`
 echo "cvm_full_dir     : to $cvm_full_dir"
-
-## supposedly run from OSL root dir
 
 chmod +x "$cvm_full_dir/bin/cvm"
 chmod +x "$cvm_full_dir/bin/cvm_exec"
