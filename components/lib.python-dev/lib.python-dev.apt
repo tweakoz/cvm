@@ -1,9 +1,15 @@
-## This file is a C++VM component definition
-## C++ Version Manager https://github.com/Offirmo/cvm
+## This file is a cvm component definition
+## cvm : C++ Version Manager https://github.com/Offirmo/cvm
+
+## This file describes the installation of component :
+##    abcd           <url of homepage of this component>
+##    apt version    <url of page listing corresponding apt packets>
+
 
 ## requirements :
-## (none -> handled by apt)
+## (none managed by cvm : requirements are managed by apt-get)
+
 
 ## installation instructions :
-install_mode apt
-apt_packets  python-dev
+install_mode   apt
+apt_packet     python-dev

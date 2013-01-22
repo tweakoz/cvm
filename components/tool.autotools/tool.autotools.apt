@@ -1,9 +1,20 @@
-## This file is a C++VM component definition
-## C++ Version Manager https://github.com/Offirmo/cvm
+## This file is a cvm component definition
+## cvm : C++ Version Manager https://github.com/Offirmo/cvm
+
+## This file describes the installation of component :
+##    autotools, aka "GNU build system"      http://en.wikipedia.org/wiki/GNU_build_system
+##    apt version    <url of page listing corresponding apt packets>
+
+## XXX this component is a pseudo-component for easier install of the "autotools" collection
+
 
 ## requirements :
-## (none -> handled by apt)
+require tool.autoconf
+require tool.automake
+require tool.libtool
+require tool.make
+
 
 ## installation instructions :
-install_mode apt
-apt_packets  autoconf automake autotools-dev m4
+install_mode   do_nothing
+# m4

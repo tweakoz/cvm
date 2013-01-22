@@ -1,12 +1,13 @@
-## This file is a C++VM component definition
-## C++ Version Manager https://github.com/Offirmo/cvm
+## This file is a cvm component definition
+## cvm : C++ Version Manager https://github.com/Offirmo/cvm
+
+## This file describes the installation of component :
+##    graphicsmagic library   http://www.graphicsmagick.org
+##    version 1.3.17          <url of release info for this component>
 
 
-## Component GraphicsMagic
-## http://www.graphicsmagick.org
-
-
-## requirements :
+## requirements (for both installation and nominal execution) :
+## cf. <url of doc listing requirements>
 # TODO
 
 ## installation instructions :

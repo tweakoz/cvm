@@ -84,6 +84,7 @@ CVM_COMP_SELECTION_find_best_matching_component()
 
 	## note : "system" and "stub" are synonymous
 	if [[ $exact_version_required == "system" ]]; then
+		## using system version is equivalent to faking installation
 		exact_version_required="stub"
 	fi
 	

@@ -70,6 +70,23 @@ CVM_COMMANDS_create_component()
 	echo "Please enter the component type : (lib, tool or compiler)"
 	read type
 	echo "type : $type"
-	mkdir -p "$CVM_INTEGRATED_COMP_DEFS_DIR/$type.$name"
+	comp_id="$type.$name"
+	comp_dir="$CVM_INTEGRATED_COMP_DEFS_DIR/$comp_id"
+	mkdir -p "$comp_dir"
 	
+	## now copy example files
+	stub_file="$comp_dir/$comp_id.stub"
+	if ! [[ -f "$stub_file" ]]; then
+		cp "$CVM_EXAMPLES_DIR/component/type.name.stub" "$stub_file"
+	fi
+
+	apt_file="$comp_dir/$comp_id.apt"
+	if ! [[ -f "$apt_file" ]]; then
+		cp "$CVM_EXAMPLES_DIR/component/type.name.apt" "$apt_file"
+	fi
+
+	version_sample_file="$comp_dir/$comp_id.version_todo"
+	if ! [[ -f "$version_sample_file" ]]; then
+		cp "$CVM_EXAMPLES_DIR/component/type.name.version" "$version_sample_file"
+	fi
 }

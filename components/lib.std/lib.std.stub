@@ -1,9 +1,12 @@
-## This file is a C++VM component definition
-## C++ Version Manager https://github.com/Offirmo/cvm
+## This file is a cvm component definition
+## cvm : C++ Version Manager https://github.com/Offirmo/cvm
+
+## This file is a stub : it does nothing but pretend it works.
+## It is useful in special cases for pretending that dependencies are met.
+## For example, if a tool was already installed manually.
 
 ## requirements :
-## (none)
+## (none, this is a stub)
 
 ## installation instructions :
-## (none : standard lib is usually part of the compiler)
-install_mode do_nothing
+install_mode   do_nothing

@@ -1,9 +1,21 @@
-## This file is a C++VM component definition
-## C++ Version Manager https://github.com/Offirmo/cvm
+## This file is a cvm component definition
+## cvm : C++ Version Manager https://github.com/Offirmo/cvm
 
-## requirements :
-# ?
+## This file describes the installation of component :
+##    <component name>   <url of homepage of this component>
+##    version x.y.z      <url of release info for this component>
+## (other alternatives :)
+##    git exact version of 2012/09/14, hash : 86f52cb0e04d...
+##    latest version from svn/git
 
+
+## requirements (for both installation and nominal execution) :
+## cf. <url of doc listing requirements>
+require   tool.abcd
+require   lib.efgh
+
+
+-- example with autotools :
 ## installation instructions :
 install_mode                    build
 build_mode                      autotools
@@ -11,3 +23,25 @@ src_obtention_mode              archive
 
 archive_obtention_mode          download
 archive_download_url            ftp://gcc.gnu.org/pub/gcc/releases/gcc-4.7.2/gcc-4.7.2.tar.bz2
+
+-- example with direct make :
+## installation instructions :
+install_mode                    build
+build_mode                      make
+src_obtention_mode              archive
+archive_obtention_mode          download
+archive_download_url            http://sourceforge.net/projects/unittest-cpp/files/UnitTest%2B%2B/1.4/unittest-cpp-1.4.zip/download
+archive_download_target         unittest-cpp-1.4.zip
+unexpected_archive_unpack_dir   UnitTest++
+
+-- example with cmake :
+## installation instructions :
+install_mode                    build
+build_mode                      cmake
+cmake_additional_options        -DCONFIGDIR={{dir_result}}/config
+src_obtention_mode              archive
+
+archive_obtention_mode          download
+archive_download_url            http://prdownloads.sourceforge.net/witty/wt-3.2.3.tar.gz?download
+archive_download_target         wt-3.2.3.tar.gz
+unexpected_archive_unpack_dir   wt-3.2.3

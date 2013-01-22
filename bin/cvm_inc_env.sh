@@ -115,6 +115,8 @@ OSL_INIT_ensure_dir $CVM_SRC_DIR
 ## the dir for integrated components definitions
 CVM_INTEGRATED_COMP_DEFS_DIR=$CVM_INSTALL_DIR/components
 
+## the dir containing examples
+CVM_EXAMPLES_DIR=$CVM_INSTALL_DIR/misc/examples
 
 ## a dir for component sets
 CVM_COMPSETS_DIR=$CVM_DATA_DIR/compsets
