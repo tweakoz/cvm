@@ -30,6 +30,7 @@ source cvm_inc_env.sh
 ## And load our primitives
 source cvm_lib_base.sh
 source cvm_lib_compset.sh
+source cvm_lib_parse.sh
 source cvm_lib_compfile.sh
 source cvm_lib_component.sh
 source cvm_lib_comp_selection.sh
@@ -72,9 +73,8 @@ PARAM2=$2
 PARAM3=$3
 
 ## init and defaults
-#CVM_verbose=true  ## dev actively in progress
 CVM_verbose=false
-#CVM_verbose=true
+CVM_verbose=true  ## dev actively in progress
 if [[ "$CVM_verbose" == "true" ]]; then
 	OSL_debug_activated=true
 fi
@@ -172,7 +172,7 @@ exec_cmd_process_compfile_to_current_compset()
 	if [[ -z "$compfile_path" ]]; then
 		compfile_path=$CVM_DEFAULT_COMPFILE_NAME
 	fi
-	echo "* Applying component file \"$compfile_path\" to component set \"$CURRENT_COMPSET\"..."
+	echo "* copying component file \"$compfile_path\" to component set \"$CURRENT_COMPSET\"..."
 	CVM_COMPFILE_set  $compfile_path  $CURRENT_COMPSET
 	echo "* ...done."
 	

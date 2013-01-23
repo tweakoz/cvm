@@ -6,9 +6,16 @@
 
 #echo "Hello from true config.example"
 
+
 ## option : redirect to another file
 #source /srv/dev/misc/cvm/misc/config.example
 
+
+## option : disable apt-get installs
+## (for example if you are not root)
+#CVM_OPTION_DISABLE_APT_INSTALL=true
+
+
 ## Default working dir is in  ~/.c++vm
-## We can redefine it (only the config file will stay in .c++vm)
+## We can redefine it. (only the config file will stay in .c++vm)
 #CVM_DATA_DIR=/srv/dev/misc/cvm_data

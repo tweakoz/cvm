@@ -7,7 +7,7 @@
 ##   the operations following the requirement of a component
 ##
 ## This file is not meant to be executed, only sourced :
-##   source c++vm_lib_require.sh
+##   source cvm_lib_require.sh
 
 ## REM : required includes are in main file
 

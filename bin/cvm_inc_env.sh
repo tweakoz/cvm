@@ -5,7 +5,7 @@
 ## 
 ## This file define vars about current C++VM environment
 ## This file is meant to be sourced :
-##   source c++vm_inc_env.sh
+##   source cvm_inc_env.sh
 
 
 ## current version
@@ -33,10 +33,16 @@ CVM_COMP_SRC_RSRC_ID_PART="src"
 CVM_COMP_ARCHIVE_RSRC_ID_PART="archive"
 
 
+## Variables
 ## a dir where we'll put our stuff
 CVM_DEFAULT_DATA_DIR=$HOME/.cvm
 CVM_DATA_DIR=$CVM_DEFAULT_DATA_DIR
 OSL_INIT_ensure_dir $CVM_DATA_DIR
+
+
+## Options
+CVM_OPTION_DISABLE_APT_INSTALL=false # allowed by default
+
 
 ## A config file where user will be able to change stuff
 CVM_CONFIG_PATH="$CVM_DATA_DIR/config"

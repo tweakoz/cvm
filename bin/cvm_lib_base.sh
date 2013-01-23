@@ -7,7 +7,7 @@
 ##   basic utilities methods used in c++vm scripts
 ##
 ## This file is not meant to be executed, only sourced :
-##   source c++vm_lib_base.sh
+##   source cvm_lib_base.sh
 
 ## REM : required includes are in main file
 

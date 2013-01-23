@@ -7,7 +7,7 @@
 ##   the installation of a component
 ##
 ## This file is not meant to be executed, only sourced :
-##   source c++vm_lib_comp_installation.sh
+##   source cvm_lib_comp_installation.sh
 
 ## REM : required includes are in main file
 
@@ -546,6 +546,41 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_installed()
 }
 
 
+CVM_COMP_INSTALL_install_apt_packets_if_needed()
+{
+	local apt_packets="$*"
+	local return_code=1 # error/not exist by default
+
+	## now the trick is that we don't want to call sudo unnecessarily
+	## since :
+	## 1) the packets may already been installed
+	## 2) the user may not be root
+	CVM_debug "* cleanly installing packets : $apt_packets"
+
+	## split and process
+	local OIFS=$IFS
+	IFS=' '
+	return_code=0 # OK so far
+	for packet in $apt_packets; do
+		CVM_debug "  - checking packet : $packet"
+		if [[ "$(OSL_CAPABILITIES_APT_get_packet_status $packet)" == "Installed" ]]; then
+			CVM_debug "    -> already installed, OK."
+		else
+			## must install it, uing sudo capabilities
+			sudo apt-get install --yes $packet
+			return_code=$?
+			if [[ $return_code -ne 0 ]]; then
+				## stop immediately
+				break
+			fi
+		fi
+	done
+	IFS=$OIFS
+
+	return $return_code
+}
+
+
 CVM_COMP_INSTALL_ensure_loaded_component_is_installed_via_apt()
 {
 	local component_id=$1
@@ -567,13 +602,21 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_installed_via_apt()
 	local OSlmomd_bkp=$OSL_RSRC_state
 	OSL_RSRC_begin_managed_write_operation "$rsrc_dir" "$rsrc_id"
 
-	CVM_COMP_INSTALL_get_value_from_cached_component_for "apt_packets"
+	CVM_COMP_INSTALL_get_value_from_cached_component_for "apt-packet"
 	return_code=$?
 	if [[ $? -ne 0 ]]; then
-		OSL_OUTPUT_display_error_message "Can't read apt packets given component archive..."
+		OSL_OUTPUT_display_error_message "Can't read given component apt packet..."
 	else
 		local apt_packets=$return_value
-		sudo apt-get install --yes $apt_packets
+		## are there more packets needed ?
+		CVM_COMP_INSTALL_get_value_from_cached_component_for "apt-additional-packets"
+		return_code=$?
+		if [[ $? -eq 0 ]]; then
+			## OK, more packets
+			apt_packets="$apt_packets $return_value"
+		fi
+
+		CVM_COMP_INSTALL_install_apt_packets_if_needed $apt_packets
 		return_code=$?
 	fi
 

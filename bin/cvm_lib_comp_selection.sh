@@ -7,7 +7,7 @@
 ##   the operations on component selection files
 ##
 ## This file is not meant to be executed, only sourced :
-##   source c++vm_lib_comp_selection.sh
+##   source cvm_lib_comp_selection.sh
 
 ## REM : required includes are in main file
 
@@ -95,7 +95,7 @@ CVM_COMP_SELECTION_find_best_matching_component()
 	
 	if [[ $return_code -ne 0 ]]; then
 		## problem
-		return_value="XXX C++VM best matching component not found XXX" # error by default
+		return_value="XXX C++VM best matching component not found XXX"
 	else
 		return_code=1 # again, error by default
 		local comp_def_dir="$return_value"
@@ -104,9 +104,7 @@ CVM_COMP_SELECTION_find_best_matching_component()
 		cd "$comp_def_dir"
 		
 		## now select the best version
-		## first read current requirements
-		## TODO : actually read those data !
-		## Now list all available versions
+		## by listing and checking all available versions
 		## note : we ask for a reverse sort, so newer versions are coming first
 		output=`ls --almost-all -1 --reverse --color=none $component_id.*`
 		## now parse the results
@@ -116,45 +114,68 @@ CVM_COMP_SELECTION_find_best_matching_component()
 		local found=false
 		local selected_version=""
 		## now loop over all available versions
-		for line in $output; do
-			local possible_version=${line#$component_id.}
-			CVM_debug "testing version \"$possible_version\"..."
-			if [[ -n $exact_version_required ]]; then
-				if [[ $possible_version == $exact_version_required ]]; then
-					## ok, found !
-					CVM_debug "exact required version found !"
-					selected_version=$line
-					found=true
-					break
-				fi
+		for version_description_file in $output; do
+			## extract the version from the file name
+			local possible_version=${version_description_file#$component_id.}
+			## but there are some special cases where suffix is not a version
+			## so do post-processing
 			## hat tip http://stackoverflow.com/a/806923/587407
-			elif ! [[ "$possible_version" =~ ^[0-9]+([.][0-9])?([.][0-9]+)?([.][0-9]+)?$ ]] ; then
-				local no_version_specified=false
-				if [[ -z "$min_version_authorized$max_version_authorized" ]]; then
-					no_version_specified=true
-				fi
+			if ! [[ "$possible_version" =~ ^[0-9]+([.][0-9])?([.][0-9]+)?([.][0-9]+)?$ ]] ; then
 				case $possible_version in
 				"apt")
-					if [[ "$no_version_specified" == "true" ]]; then
-						if [[ $(OSL_CAPABILITIES_has_apt) == "true" ]]; then
+					if [[ $(OSL_CAPABILITIES_has_apt) == "true" && "$CVM_OPTION_DISABLE_APT_INSTALL" != "true" ]]; then
+
+						## is a specific version required ?
+						## first, is a specific version required ?
+						if [[ -z "$min_version_authorized$max_version_authorized$exact_version_required" ]]; then
 							## ok, default apt version is fine since there are no version requirements
-							CVM_debug "apt version found and accepted !"
+							CVM_debug "apt version found and accepted ! (since no version reqs)"
 							selected_version=$line
 							found=true
 							break
 						fi
+
+						## There are versions requirements.
+						## Will the apt packet fulfill them ?
+
+						## quick and dirty extraction of the main packet declaration
+						local main_apt_pkt=`cat "$version_description_file" | grep -Po "^apt-packet[[:space:]]+([[:alnum:]]+)*" | sed -r "s/^apt-packet[[:space:]]+([[:alnum:]]+)*/\1/"`
+						if [[ -z "$main_apt_pkt" ]]; then
+							## no main packet was listed in the file. strange.
+							OSL_OUTPUT_warn "file \"$version_description_file\" doesn't list its main apt packet. Couldn't test version. Please check."
+							continue
+						fi
+						## which version would be installed ?
+						possible_version=$(OSL_CAPABILITIES_APT_get_packet_candidate_version $main_apt_pkt)
+						CVM_debug " testing apt packet : apt-get install $main_apt_pkt would install version : $possible_version"
+						## now proceed with version test
+						## (cf. below)
 					fi
 					;;
 				"stub")
 					## ignored. Stub is never automatically selected.
+					continue
 					;;
 				### any other non standard version
 				*)
 					OSL_OUTPUT_display_error_message "Unknown version number : $possible_version"
 					## return_code stays NOK
+					break
 					;;
 				esac
+			fi
+
+			CVM_debug "testing version \"$possible_version\"..."
+			if [[ -n $exact_version_required ]]; then
+				if [[ $possible_version == $exact_version_required ]]; then
+					## ok, found !
+					CVM_debug "exact required version found !"
+					selected_version=$version_description_file
+					found=true
+					break
+				fi
 			else
+				## is the version in range ?
 				local min_nok=0 ## ok
 				if [[ -n "$min_version_authorized" ]]; then
 					$(OSL_VERSION_test_greater_or_equal $possible_version $min_version_authorized)
@@ -173,7 +194,7 @@ CVM_COMP_SELECTION_find_best_matching_component()
 				else
 					## ok, found !
 					CVM_debug "acceptable version found !"
-					selected_version=$line
+					selected_version=$version_description_file
 					found=true
 					break
 				fi
