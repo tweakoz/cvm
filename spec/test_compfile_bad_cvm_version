@@ -1,0 +1,10 @@
+## cvm component set definition
+## see https://github.com/Offirmo/cvm
+##
+## Thanks to this file and the cvm tool,
+## all exact dependencies are installed.
+
+####### TEST FILE #######
+
+## error : asking for a more recent version
+cvm_minimum_required_version 33.22.11
