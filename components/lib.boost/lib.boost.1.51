@@ -2,7 +2,7 @@
 ## cvm : C++ Version Manager https://github.com/Offirmo/cvm
 
 ## This file describes the installation of component :
-##    Boost library   <url of homepage of this component>
+##    Boost library   http://www.boost.org/
 ##    version 1.51    <url of release info for this component>
 
 
@@ -14,13 +14,8 @@ require lib.bzip2
 
 ## installation instructions :
 install_mode                    build
-#build_mode                      boost
 build_mode                      bjam
-#custom_build_script             custom_build.1.51.sh
 src_obtention_mode              archive
-
-#archive_obtention_mode          path
-#archive_path                    /Home/ut1kab/xp/boost_1_51_0.tar.bz2
 
 archive_obtention_mode          download
 archive_download_url            http://sourceforge.net/projects/boost/files/boost/1.51.0/boost_1_51_0.tar.bz2/download

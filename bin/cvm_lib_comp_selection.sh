@@ -92,13 +92,13 @@ CVM_COMP_SELECTION_find_best_matching_component()
 
 	CVM_COMPONENT_find_component_dir $component_id "integrated"
 	return_code=$?
+	local comp_def_dir="$return_value"
 	
 	if [[ $return_code -ne 0 ]]; then
 		## problem
 		return_value="XXX C++VM best matching component not found XXX"
 	else
 		return_code=1 # again, error by default
-		local comp_def_dir="$return_value"
 		local oldwd=$(pwd)
 		CVM_debug "* moving to \"$comp_def_dir\"..."
 		cd "$comp_def_dir"
@@ -106,6 +106,7 @@ CVM_COMP_SELECTION_find_best_matching_component()
 		## now select the best version
 		## by listing and checking all available versions
 		## note : we ask for a reverse sort, so newer versions are coming first
+		CVM_debug "* looping over components versions definition files..."
 		output=`ls --almost-all -1 --reverse --color=none $component_id.*`
 		## now parse the results
 		## to split lines along \n, we must change the IFS
@@ -117,6 +118,7 @@ CVM_COMP_SELECTION_find_best_matching_component()
 		for version_description_file in $output; do
 			## extract the version from the file name
 			local possible_version=${version_description_file#$component_id.}
+			CVM_debug "  - scanning file \"$version_description_file\" [$possible_version]..."
 			## but there are some special cases where suffix is not a version
 			## so do post-processing
 			## hat tip http://stackoverflow.com/a/806923/587407
@@ -130,7 +132,7 @@ CVM_COMP_SELECTION_find_best_matching_component()
 						if [[ -z "$min_version_authorized$max_version_authorized$exact_version_required" ]]; then
 							## ok, default apt version is fine since there are no version requirements
 							CVM_debug "apt version found and accepted ! (since no version reqs)"
-							selected_version=$line
+							selected_version=$version_description_file
 							found=true
 							break
 						fi
@@ -151,6 +153,10 @@ CVM_COMP_SELECTION_find_best_matching_component()
 						## now proceed with version test
 						## (cf. below)
 					fi
+					;;
+				"latest")
+					## ignored. Feature in progress.
+					continue
 					;;
 				"stub")
 					## ignored. Stub is never automatically selected.
@@ -209,7 +215,7 @@ CVM_COMP_SELECTION_find_best_matching_component()
 			OSL_OUTPUT_display_error_message "Couldn't find an acceptable version for component : $component_id..."
 			## return code stays false
 		else
-			return_value=$return_value/$selected_version
+			return_value=$comp_def_dir/$selected_version
 			
 			## prepare line
 			local line="selected_version $selected_version"
@@ -280,7 +286,7 @@ CVM_COMP_SELECTION_add_component_info_if_needed()
 	if [[ $found == true ]]; then
 		CVM_debug "-> info already here."
 	else
-		CVM_debug "-> info was new, added."
+		CVM_debug "-> info was new, added. [$info_line]"
 		echo "$info_line" >> "$COMP_SEL_FILE"
 	fi
 	return_code=0 ## OK

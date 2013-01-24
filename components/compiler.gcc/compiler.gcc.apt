@@ -13,4 +13,4 @@
 ## installation instructions :
 install_mode             apt
 apt-packet               gcc
-apt-additional-packets   build-essentials
+apt-additional-packets   build-essential

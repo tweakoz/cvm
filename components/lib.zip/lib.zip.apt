@@ -2,8 +2,8 @@
 ## cvm : C++ Version Manager https://github.com/Offirmo/cvm
 
 ## This file describes the installation of component :
-##    Boost library   http://www.boost.org/
-##    apt version    <url of page listing corresponding apt packets>
+##    libzip library   http://www.nih.at/libzip/
+##    apt version      <url of page listing corresponding apt packets>
 
 
 ## requirements :
@@ -12,4 +12,4 @@
 
 ## installation instructions :
 install_mode   apt
-apt_packet     libboost-dev
+apt-packets    ???

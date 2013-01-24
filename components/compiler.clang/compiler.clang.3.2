@@ -8,9 +8,40 @@
 
 ## requirements (for both installation and nominal execution) :
 ## cf. http://llvm.org/docs/GettingStarted.html#requirements
+require tool.make, version : 3.79+
 require compiler.gcc, version : 3.4.2+
+require tool.perl, version : 5.6.0+
+require tool.m4, version : 1.4+
 require tool.autoconf, version : 2.60+
 require tool.automake, version : 1.9.6+
-require tool.make, version : 3.79+
+require tool.automake, version : 1.5.22+
 
 ## installation instructions :
+install_mode                    build
+build_mode                      autotools
+src_obtention_mode              archive
+
+archive_obtention_mode          download
+archive_download_url            ftp://gcc.gnu.org/pub/gcc/releases/gcc-4.7.2/gcc-4.7.2.tar.bz2
+
+-- example with direct make :
+## installation instructions :
+install_mode                    build
+build_mode                      make
+src_obtention_mode              archive
+archive_obtention_mode          download
+archive_download_url            http://sourceforge.net/projects/unittest-cpp/files/UnitTest%2B%2B/1.4/unittest-cpp-1.4.zip/download
+archive_download_target         unittest-cpp-1.4.zip
+unexpected_archive_unpack_dir   UnitTest++
+
+-- example with cmake :
+## installation instructions :
+install_mode                    build
+build_mode                      cmake
+cmake_additional_options        -DCONFIGDIR={{dir_result}}/config
+src_obtention_mode              archive
+
+archive_obtention_mode          download
+archive_download_url            http://prdownloads.sourceforge.net/witty/wt-3.2.3.tar.gz?download
+archive_download_target         wt-3.2.3.tar.gz
+unexpected_archive_unpack_dir   wt-3.2.3

@@ -11,7 +11,8 @@ Inspired from the great RVM (Ruby Version Manager) : https://rvm.io// and the Bu
 
 - cvm is available at : https://github.com/Offirmo/cvm
 - Slideshow presenting the tool : http://fr.slideshare.net/Offirmo/introducing-cvm
-- cvm has a tracker : https://www.pivotaltracker.com/projects/710241
+- beautiful changelog here : http://revision.io/cvm
+- project tracker : https://www.pivotaltracker.com/projects/710241
 
 
 
@@ -20,6 +21,8 @@ Introduction
 
 The user story
 --------------
+(Note : the slideshow is more readable : http://fr.slideshare.net/Offirmo/introducing-cvm)
+
 Right now I'm writing a C++ app. It is ready to be deployed to the production server. Unfortunately...
 
 First, I use libraries that need to be installed as well. Ubuntu has packages for most of them, but they are outdated in this case. So I need to install them from source, latest version...

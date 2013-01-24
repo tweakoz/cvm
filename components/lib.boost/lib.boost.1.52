@@ -2,15 +2,16 @@
 ## cvm : C++ Version Manager https://github.com/Offirmo/cvm
 
 ## This file describes the installation of component :
-##    Boost library   <url of homepage of this component>
+##    Boost library   http://www.boost.org/
 ##    version 1.52    <url of release info for this component>
 
 
 ## requirements (for both installation and nominal execution) :
 ## cf. <url of doc listing requirements>
 # yes, autotools are required by bjam to find some stuff...
-require tool.autotools
+#require tool.autotools
 require lib.python-dev
+require lib.zip
 require lib.bzip2
 
 ## installation instructions :
