@@ -74,7 +74,7 @@ PARAM3=$3
 
 ## init and defaults
 CVM_verbose=false
-CVM_verbose=true  ## dev actively in progress
+#CVM_verbose=true  ## dev actively in progress
 if [[ "$CVM_verbose" == "true" ]]; then
 	OSL_debug_activated=true
 fi
