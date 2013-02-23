@@ -19,6 +19,7 @@ require   lib.efgh
 ## installation instructions :
 install_mode                    build
 build_mode                      autotools
+configure_additional_options    --with-boost={{dir_result:lib.boost}}
 src_obtention_mode              archive
 
 archive_obtention_mode          download
@@ -38,7 +39,7 @@ unexpected_archive_unpack_dir   UnitTest++
 ## installation instructions :
 install_mode                    build
 build_mode                      cmake
-cmake_additional_options        -DCONFIGDIR={{dir_result}}/config
+cmake_additional_options        -DCONFIGDIR={{dir_result:lib.this}}/config
 src_obtention_mode              archive
 
 archive_obtention_mode          download

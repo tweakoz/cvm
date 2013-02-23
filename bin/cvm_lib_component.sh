@@ -146,6 +146,8 @@ CVM_COMPONENT_get_component_type()
 }
 
 
+## removes the prefix
+## lib.boost -> boost
 CVM_COMPONENT_get_component_target_name()
 {
 	local component_id=$1
@@ -154,6 +156,25 @@ CVM_COMPONENT_get_component_target_name()
 	#CVM_debug "parsing component target name for : $component_id"
 
 	echo "${component_id#*.}"
+	return_code=0
+	
+	return $return_code
+}
+
+
+## return the selected component full version
+## lib.boost -> lib.boost.1.53
+## NOTE : component selection is supposed to have already been done !
+CVM_COMPONENT_get_component_selected_version()
+{
+	local component_name=$1
+	local return_code=1 # error by default
+
+	#CVM_debug "parsing component target name for : $component_id"
+
+	local compset_dir=$(CVM_COMPSET_get_current_compset_dir)
+	local selected_version_line=`head --lines=1 "$compset_dir/$CVM_COMP_SELECTION_DIR_NAME/$component_name"`
+	echo "$selected_version_line" | awk '{print $2}'
 	return_code=0
 	
 	return $return_code

@@ -26,6 +26,12 @@ CVM_COMMANDS_print_status()
 	echo "* current compset    : \"`cat \"$CVM_ACTIVE_COMPSET\"`\""
 	echo "* current compset components :"
 	CVM_COMP_SELECTION_dump
+
+	## tests
+	#echo $(CVM_COMPONENT_get_component_target_name lib.boost.1.53)
+	echo $(CVM_COMPONENT_get_component_selected_version lib.boost)
+
+	echo $(CVM_COMP_INSTALL_substitute_keywords "--with-boost={{dir_result:lib.boost}} --with-pion={{dir_result:lib.pion}}")
 }
 
 

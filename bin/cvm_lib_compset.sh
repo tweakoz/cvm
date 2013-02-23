@@ -16,6 +16,7 @@
 CVM_COMPSET_DEFAULT_COMPSET_NAME="default"
 
 
+## get dir of a specific compset
 CVM_COMPSET_get_compset_dir()
 {
 	local compset_name=$1

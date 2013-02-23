@@ -1,0 +1,24 @@
+## This file is a cvm component definition
+## cvm : C++ Version Manager https://github.com/Offirmo/cvm
+
+## This file describes the installation of component :
+##    The Pion network library   https://github.com/cloudmeter/pion
+##    git exact version of 2013/02/22, hash : 39b5ae8482193dc2b156b7540f70930e62e76dad
+
+
+## requirements (for both installation and nominal execution) :
+## cf. /doc/README.linux
+require   lib.Boost,      version : 1.35+
+#Pion requires zlib, bzlib and openssl for compression and SSL/TLS encryption
+
+-- example with autotools :
+## installation instructions :
+install_mode                    build
+build_mode                      autotools
+configure_additional_options    --with-boost={{dir_result:lib.boost}}
+src_obtention_mode              git
+
+git_remote                      https://github.com/cloudmeter/pion.git
+#git_branch                      develop
+git_revision                    39b5ae8482193dc2b156b7540f70930e62e76dad
+

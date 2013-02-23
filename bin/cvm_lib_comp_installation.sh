@@ -880,7 +880,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_built()
 		local cmake_additional_options=$return_value
 		if [[ -n "$cmake_additional_options" ]]; then
 			## 
-			cmake_additional_options=$(CVM_COMP_INSTALL_substitute_keywords "$cmake_additional_options" "$prefix")
+			cmake_additional_options=$(CVM_COMP_INSTALL_substitute_keywords "$cmake_additional_options")
 		fi
 		echo "cmake -Wdev $src_dir -DCMAKE_INSTALL_PREFIX:PATH=$prefix $cmake_additional_options"
 		cmake -Wdev "$src_dir" -DCMAKE_INSTALL_PREFIX:PATH="$prefix" $cmake_additional_options
@@ -921,8 +921,24 @@ CVM_COMP_INSTALL_ensure_loaded_component_is_built()
 		prefix=$(readlink -f "$prefix")
 		local build_dir="$(CVM_COMPONENT_get_component_build_dir $component_version)"
 		cd "$build_dir"
-		CVM_debug "./configure --prefix=$prefix"
-		./configure --prefix="$prefix"
+		## some libs need to generate the configure script
+		## (seen with pion network library)
+		if ! [[ -f configure ]]; then
+			if [[ -f autogen.sh ]]; then
+			CVM_debug "./autogen.sh"
+				./autogen.sh
+			fi
+		fi
+		## configure may need options
+		CVM_COMP_INSTALL_get_value_from_cached_component_for "configure_additional_options"
+		local configure_additional_options=$return_value
+		if [[ -n "$configure_additional_options" ]]; then
+			## 
+			configure_additional_options=$(CVM_COMP_INSTALL_substitute_keywords "$configure_additional_options")
+		fi
+		## configure file should now be available
+		CVM_debug "./configure --prefix=$prefix $configure_additional_options"
+		./configure --prefix="$prefix" $configure_additional_options
 		return_code=$?
 		if [[ $return_code -ne 0 ]]; then
 			OSL_OUTPUT_display_error_message "autotools configuration failed"
@@ -996,9 +1012,30 @@ CVM_COMP_INSTALL_substitute_keywords()
 	local prefix=$2
 	local result_string=$string_to_substitute # for now
 
-	#CVM_debug "* substituting \"$string_to_substitute\"..."
+	#echo "° substituting \"$string_to_substitute\"..."
 
-	result_string=`echo "$result_string" | sed s!{{dir_result}}!$prefix!g`
+	#result_string=`echo "$result_string" | sed s!{{dir_result}}!$prefix!g`
+
+	local component_result=`echo "$result_string" | grep --max-count=1 -Po "{{dir_result:[a-z0-9\.]+}}"`
+	while [ -n "$component_result" ]
+	do
+		# | awk '{print $1}'
+		component_result=`echo $component_result | awk '{print $1}'`
+		#echo "° found {{dir_result:xyz}} : \"$component_result\"..."
+		local target_component=`echo "$component_result" | sed --regexp-extended "s|\{\{dir_result:([a-z0-9\.]+)\}\}|\1|"`
+		#target_component=`echo "$target_component" | awk '{print $1}'`
+		#echo "° identified as {{dir_result:$target_component}}..."
+		local component_id=$(CVM_COMPONENT_get_component_selected_version $target_component)
+		#echo "° full v = $component_id"
+		local dir_result=$(CVM_COMPSET_get_current_compset_dir)/$(CVM_COMPONENT_get_component_prefix $component_id)
+		## actually replace
+		result_string=`echo "$result_string" | sed --regexp-extended "s|\{\{dir_result:$target_component\}\}|$dir_result|"`
+
+		component_result=`echo "$result_string" | grep -Po "{{dir_result:[a-z0-9\.]+}}"`
+		#component_result=""
+	done
+
+	#result_string=`echo "$result_string" | sed --regexp-extended "s|\{\{dir_result:([a-z0-9\.]+)\}\}|$( \1)|"
 
 	#CVM_debug "  --> substitution result \"$result_string\"."
 
@@ -1161,8 +1198,8 @@ CVM_COMP_INSTALL_ensure_loaded_component_shared_src_are_available()
 	case $return_value in
 	### from a git repo
 	"git")
-		OSL_OUTPUT_warn_not_implemented "git"
-		return_code=1 # error
+		CVM_COMP_INSTALL_ensure_git_checkout_is_available "$component_id" "$component_version"
+		return_code=$?
 		;;
 	### from a svn repo
 	"svn")
@@ -1221,6 +1258,97 @@ CVM_COMP_INSTALL_ensure_loaded_component_shared_src_are_available()
 }
 
 
+CVM_COMP_INSTALL_ensure_git_checkout_is_available()
+{
+	local component_id=$1
+	local component_version=$2
+	local return_code=1 # error/not exist by default
+	
+	CVM_debug "* ensuring that component \"$component_version\" git checkout is available..."
+
+	## We use the technique described here :
+	## http://stackoverflow.com/questions/3489173/how-to-clone-git-repository-with-specific-revision-changeset
+
+	return_code=0 ## ok so far
+
+	## cleanup possible existing bad dir
+	local dest_dir=$(CVM_COMPONENT_get_component_shared_src_dir $component_version)
+	rm -rf "$dest_dir"
+
+	mkdir -p "$dest_dir"
+
+	local prewd=$(pwd)
+	cd "$dest_dir/.."
+
+	#git init
+	#return_code=$?
+	#if [[ $return_code -ne 0 ]]; then
+	#	OSL_OUTPUT_display_error_message "Can't read init src git repo !"
+	#fi
+
+	if [[ $return_code -eq 0 ]]; then
+		## remote git ?
+		CVM_COMP_INSTALL_get_value_from_cached_component_for "git_remote"
+		if [[ $? -ne 0 ]]; then
+			OSL_OUTPUT_display_error_message "Can't read src git remote url !"
+			return_code=1
+		elif [[ -z $return_value ]]; then
+			## bad !
+			OSL_OUTPUT_display_error_message "Can't read src git remote url !"
+			return_code=1
+		else
+			#git remote add origin "$return_value"
+			git clone "$return_value" "$dest_dir"
+			return_code=$?
+			if [[ $return_code -ne 0 ]]; then
+				OSL_OUTPUT_display_error_message "Can't set src git repo remote !"
+			fi
+			cd "$dest_dir"
+			pwd
+		fi
+	fi
+
+	if [[ $return_code -eq 0 ]]; then
+		## target git revision ?
+		CVM_COMP_INSTALL_get_value_from_cached_component_for "git_revision"
+		if [[ $? -ne 0 ]]; then
+			OSL_OUTPUT_display_error_message "Can't read src git revision !"
+			return_code=1
+		elif [[ $return_value == "latest" ]]; then
+			OSL_OUTPUT_warn_not_implemented "git latest"
+			return_code=1 # error
+		else
+			git checkout "$return_value"
+			#git fetch origin "$return_value"
+			return_code=$?
+			if [[ $return_code -ne 0 ]]; then
+				OSL_OUTPUT_display_error_message "Can't fetch src git revision !"
+			fi
+		fi
+	fi
+
+	if [[ $return_code -eq 0 ]]; then
+		git reset --hard
+		# FETCH_HEAD
+		return_code=$?
+		if [[ $return_code -ne 0 ]]; then
+			OSL_OUTPUT_display_error_message "Can't set src git repo to desired revision !"
+		fi
+	fi
+
+	## restore working dir
+	cd "$prewd"
+
+	if [[ $return_code -ne 0 ]]; then
+		OSL_OUTPUT_display_error_message "couldn't obtain component \"$component_version\" git src checkout..."
+	else
+		CVM_debug "* component \"$component_version\" git src checkout obtained successfully."
+	fi
+
+	return $return_code
+}
+
+
 CVM_COMP_INSTALL_ensure_loaded_component_shared_archive_is_available()
 {
 	local component_id=$1
@@ -1229,7 +1357,7 @@ CVM_COMP_INSTALL_ensure_loaded_component_shared_archive_is_available()
 	
 	CVM_debug "* ensuring that component \"$component_version\" shared archive is available..."
 
-	## chek rsrc
+	## check if rsrc already exists
 	local rsrc_id=$component_version.$CVM_COMP_ARCHIVE_RSRC_ID_PART
 	local rsrc_dir="$CVM_ARCHIVES_DIR"
 	OSL_RSRC_check "$rsrc_dir" "$rsrc_id"
